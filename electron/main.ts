@@ -7,6 +7,99 @@ import { listAvailableExtensions, installExtension, uninstallExtension, isExtens
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Main process log capture
+interface LogEntry {
+    timestamp: string;
+    level: string;
+    message: string;
+}
+
+const MAX_MAIN_LOGS = 500;
+const mainProcessLogs: LogEntry[] = [];
+
+const originalConsole = {
+    log: console.log.bind(console),
+    info: console.info.bind(console),
+    warn: console.warn.bind(console),
+    error: console.error.bind(console),
+};
+
+function captureLog(level: string, args: any[]) {
+    const message = args
+        .map(arg => {
+            if (arg instanceof Error) {
+                return `${arg.message}\n${arg.stack}`;
+            }
+            if (typeof arg === 'object') {
+                try {
+                    return JSON.stringify(arg, null, 2).substring(0, 500);
+                } catch {
+                    return String(arg);
+                }
+            }
+            return String(arg);
+        })
+        .join(' ')
+        .substring(0, 1000);
+
+    mainProcessLogs.push({
+        timestamp: new Date().toISOString(),
+        level,
+        message,
+    });
+
+    if (mainProcessLogs.length > MAX_MAIN_LOGS) {
+        mainProcessLogs.shift();
+    }
+}
+
+console.log = (...args) => { captureLog('LOG', args); originalConsole.log(...args); };
+console.info = (...args) => { captureLog('INFO', args); originalConsole.info(...args); };
+console.warn = (...args) => { captureLog('WARN', args); originalConsole.warn(...args); };
+console.error = (...args) => { captureLog('ERROR', args); originalConsole.error(...args); };
+
+// Test log to verify capture is working
+console.log('[Mangyomi] Debug log capture initialized');
+
+function getFormattedMainLogs(): string {
+    if (mainProcessLogs.length === 0) return 'No main process logs captured.';
+    return mainProcessLogs
+        .map(log => `[${log.timestamp}] [${log.level}] ${log.message}`)
+        .join('\n');
+}
+
+// Main process network activity capture
+interface NetworkEntry {
+    timestamp: string;
+    method: string;
+    url: string;
+    status?: number;
+    duration?: number;
+    error?: string;
+}
+
+const MAX_NETWORK_ENTRIES = 300;
+const mainNetworkActivity: NetworkEntry[] = [];
+
+function captureNetworkRequest(entry: NetworkEntry) {
+    mainNetworkActivity.push(entry);
+    if (mainNetworkActivity.length > MAX_NETWORK_ENTRIES) {
+        mainNetworkActivity.shift();
+    }
+}
+
+function getFormattedMainNetwork(): string {
+    if (mainNetworkActivity.length === 0) return 'No main process network activity captured.';
+    return mainNetworkActivity
+        .map(net => {
+            const status = net.status ? `${net.status}` : 'FAILED';
+            const duration = net.duration ? `${net.duration}ms` : '?';
+            const error = net.error ? ` - Error: ${net.error}` : '';
+            return `[${net.timestamp}] ${net.method} ${net.url.substring(0, 100)} → ${status} (${duration})${error}`;
+        })
+        .join('\n');
+}
+
 let mainWindow: BrowserWindow | null = null;
 
 function createWindow() {
@@ -60,6 +153,19 @@ function createWindow() {
     });
 
     mainWindow.webContents.on('before-input-event', (event, input) => {
+        const isDev = process.env.NODE_ENV === 'development' || process.env.VITE_DEV_SERVER_URL;
+
+        // Block DevTools shortcuts in production
+        if (!isDev) {
+            if (input.key === 'F12' ||
+                (input.control && input.shift && input.key === 'I') ||
+                (input.control && input.shift && input.key === 'J') ||
+                (input.control && input.shift && input.key === 'C')) {
+                event.preventDefault();
+                return;
+            }
+        }
+
         if (input.control && input.type === 'keyDown') {
             if (input.key === '=' || input.key === '+') {
                 const currentZoom = mainWindow?.webContents.getZoomFactor() || 1;
@@ -87,6 +193,13 @@ function setupImageProxy() {
             return new Response('Missing image URL', { status: 400 });
         }
 
+        const startTime = Date.now();
+        const entry: NetworkEntry = {
+            timestamp: new Date().toISOString(),
+            method: 'GET',
+            url: imageUrl,
+        };
+
         try {
             const headers: Record<string, string> = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -102,8 +215,15 @@ function setupImageProxy() {
                 headers,
             });
 
+            entry.status = response.status;
+            entry.duration = Date.now() - startTime;
+            captureNetworkRequest(entry);
+
             return response;
         } catch (error) {
+            entry.error = error instanceof Error ? error.message : 'Unknown error';
+            entry.duration = Date.now() - startTime;
+            captureNetworkRequest(entry);
             console.error('Image proxy error:', error);
             return new Response('Failed to fetch image', { status: 500 });
         }
@@ -451,6 +571,89 @@ function setupIpcHandlers() {
             await reloadExtensions(extensionsPath);
         }
         return result;
+    });
+
+    ipcMain.handle('app:createDumpLog', async (_, consoleLogs: string, networkActivity: string) => {
+        const os = await import('os');
+        const fs = await import('fs');
+        const { app, shell } = await import('electron');
+
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const logPath = path.join(app.getPath('desktop'), `mangyomi-debug-${timestamp}.log`);
+
+        const extensions = getAllExtensions();
+        const libraryCount = db.prepare('SELECT COUNT(*) as count FROM manga WHERE in_library = 1').get() as any;
+        const chapterCount = db.prepare('SELECT COUNT(*) as count FROM chapter').get() as any;
+        const historyCount = db.prepare('SELECT COUNT(*) as count FROM history').get() as any;
+
+        const logContent = `
+================================================================================
+                         MANGYOMI DEBUG DUMP LOG
+================================================================================
+Generated: ${new Date().toISOString()}
+App Version: ${app.getVersion()}
+Electron: ${process.versions.electron}
+Chrome: ${process.versions.chrome}
+Node: ${process.versions.node}
+
+================================================================================
+                              SYSTEM INFO
+================================================================================
+Platform: ${os.platform()} (${os.arch()})
+OS Version: ${os.release()}
+Total Memory: ${Math.round(os.totalmem() / 1024 / 1024 / 1024)} GB
+Free Memory: ${Math.round(os.freemem() / 1024 / 1024 / 1024)} GB
+CPU Cores: ${os.cpus().length}
+Home Directory: ${os.homedir()}
+User Data Path: ${app.getPath('userData')}
+
+================================================================================
+                            INSTALLED EXTENSIONS
+================================================================================
+${extensions.length === 0 ? 'No extensions installed.' : extensions.map(ext => `- ${ext.name} (${ext.id}) v${ext.version}`).join('\n')}
+
+================================================================================
+                              DATABASE STATS
+================================================================================
+Library Manga: ${libraryCount?.count || 0}
+Total Chapters: ${chapterCount?.count || 0}
+History Entries: ${historyCount?.count || 0}
+
+================================================================================
+                            EXTENSIONS PATH
+================================================================================
+${extensionsPath}
+Extensions Found: ${fs.existsSync(extensionsPath) ? fs.readdirSync(extensionsPath).filter(d => !d.startsWith('.')).join(', ') || 'None' : 'Directory not found'}
+
+================================================================================
+                      MAIN PROCESS LOGS (Extensions, DB, etc.)
+================================================================================
+${getFormattedMainLogs()}
+
+================================================================================
+                      MAIN PROCESS NETWORK (Image Proxy)
+================================================================================
+${getFormattedMainNetwork()}
+
+================================================================================
+                      RENDERER CONSOLE LOGS (UI)
+================================================================================
+${consoleLogs || 'No renderer console logs captured.'}
+
+================================================================================
+                      RENDERER NETWORK (UI fetch)
+================================================================================
+${networkActivity || 'No renderer network activity captured.'}
+
+================================================================================
+                          END OF DEBUG LOG
+================================================================================
+`;
+
+        fs.writeFileSync(logPath, logContent.trim(), 'utf-8');
+        shell.showItemInFolder(logPath);
+
+        return { success: true, path: logPath };
     });
 }
 

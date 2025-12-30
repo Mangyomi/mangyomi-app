@@ -61,4 +61,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
         maximize: () => ipcRenderer.invoke('window:maximize'),
         close: () => ipcRenderer.invoke('window:close'),
     },
+
+    app: {
+        createDumpLog: (consoleLogs: string, networkActivity: string) =>
+            ipcRenderer.invoke('app:createDumpLog', consoleLogs, networkActivity),
+    },
 });

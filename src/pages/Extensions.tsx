@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import './Extensions.css';
+
+const DEFAULT_REPO_URL = 'https://github.com/Mangyomi/mangyomi-ext';
 
 function Extensions() {
     const { extensions, loadExtensions } = useAppStore();
@@ -13,6 +15,27 @@ function Extensions() {
     const [error, setError] = useState<string | null>(null);
     const [installingIds, setInstallingIds] = useState<Set<string>>(new Set());
     const [uninstallingIds, setUninstallingIds] = useState<Set<string>>(new Set());
+    const hasInitiallyLoaded = useRef(false);
+
+    useEffect(() => {
+        if (!hasInitiallyLoaded.current) {
+            hasInitiallyLoaded.current = true;
+            loadDefaultExtensions();
+        }
+    }, []);
+
+    const loadDefaultExtensions = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const available = await window.electronAPI.extensions.listAvailable(DEFAULT_REPO_URL);
+            setAvailableExtensions(available);
+        } catch (err) {
+            console.error('Failed to load default extensions:', err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const handleBrowseRepo = async () => {
         if (!repoUrl.trim()) return;

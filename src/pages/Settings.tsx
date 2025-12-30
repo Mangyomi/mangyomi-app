@@ -123,6 +123,40 @@ function Settings() {
                         </div>
                     )}
                 </section>
+
+                {/* Debug Section */}
+                <section className="settings-section">
+                    <h2 className="section-title">Debug</h2>
+
+                    <div className="setting-item">
+                        <div className="setting-info">
+                            <label className="setting-label">Create Debug Log</label>
+                            <span className="setting-description">
+                                Generate a log file with system info, console logs, and network activity for troubleshooting
+                            </span>
+                        </div>
+                        <div className="setting-control">
+                            <button
+                                className="action-btn"
+                                onClick={async () => {
+                                    try {
+                                        const { debugLogger } = await import('../utils/debugLogger');
+                                        const consoleLogs = debugLogger.getFormattedLogs();
+                                        const networkActivity = debugLogger.getFormattedNetwork();
+                                        const result = await window.electronAPI.app.createDumpLog(consoleLogs, networkActivity);
+                                        if (result.success) {
+                                            alert('Debug log created and opened in file explorer!');
+                                        }
+                                    } catch (err) {
+                                        alert('Failed to create debug log: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                                    }
+                                }}
+                            >
+                                📋 Generate Log
+                            </button>
+                        </div>
+                    </div>
+                </section>
             </div>
         </div>
     );

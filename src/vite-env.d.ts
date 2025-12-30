@@ -63,6 +63,9 @@ interface Window {
             getChapterList: (extensionId: string, mangaId: string) => Promise<any[]>;
             getChapterPages: (extensionId: string, chapterId: string) => Promise<string[]>;
         };
+        app: {
+            createDumpLog: (consoleLogs: string, networkActivity: string) => Promise<{ success: boolean; path: string }>;
+        };
         getProxiedImageUrl: (url: string, extensionId: string) => string;
     };
 }
