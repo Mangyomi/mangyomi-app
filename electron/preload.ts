@@ -1,0 +1,64 @@
+import { contextBridge, ipcRenderer } from 'electron';
+
+contextBridge.exposeInMainWorld('electronAPI', {
+    db: {
+        getManga: (id: string) => ipcRenderer.invoke('db:getManga', id),
+        getAllManga: () => ipcRenderer.invoke('db:getAllManga'),
+        addManga: (manga: any) => ipcRenderer.invoke('db:addManga', manga),
+        updateManga: (id: string, data: any) => ipcRenderer.invoke('db:updateManga', id, data),
+        deleteManga: (id: string) => ipcRenderer.invoke('db:deleteManga', id),
+        ensureManga: (manga: any) => ipcRenderer.invoke('db:ensureManga', manga),
+        getChapters: (mangaId: string) => ipcRenderer.invoke('db:getChapters', mangaId),
+        addChapters: (chapters: any[]) => ipcRenderer.invoke('db:addChapters', chapters),
+        markChapterRead: (chapterId: string, pageNumber?: number) =>
+            ipcRenderer.invoke('db:markChapterRead', chapterId, pageNumber),
+        markChapterUnread: (chapterId: string) => ipcRenderer.invoke('db:markChapterUnread', chapterId),
+        markChaptersRead: (chapterIds: string[]) => ipcRenderer.invoke('db:markChaptersRead', chapterIds),
+        markChaptersUnread: (chapterIds: string[]) => ipcRenderer.invoke('db:markChaptersUnread', chapterIds),
+        saveReadingProgress: (manga: any, chapter: any, pageNumber: number) =>
+            ipcRenderer.invoke('db:saveReadingProgress', manga, chapter, pageNumber),
+        getHistory: (limit?: number) => ipcRenderer.invoke('db:getHistory', limit),
+        getTags: () => ipcRenderer.invoke('db:getTags'),
+        createTag: (name: string, color: string) => ipcRenderer.invoke('db:createTag', name, color),
+        updateTag: (id: number, name: string, color: string) => ipcRenderer.invoke('db:updateTag', id, name, color),
+        deleteTag: (id: number) => ipcRenderer.invoke('db:deleteTag', id),
+        addTagToManga: (mangaId: string, tagId: number) =>
+            ipcRenderer.invoke('db:addTagToManga', mangaId, tagId),
+        removeTagFromManga: (mangaId: string, tagId: number) =>
+            ipcRenderer.invoke('db:removeTagFromManga', mangaId, tagId),
+        getMangaByTag: (tagId: number) => ipcRenderer.invoke('db:getMangaByTag', tagId),
+        getTagsForManga: (mangaId: string) => ipcRenderer.invoke('db:getTagsForManga', mangaId),
+    },
+
+    extensions: {
+        getAll: () => ipcRenderer.invoke('ext:getAll'),
+        enable: (id: string) => ipcRenderer.invoke('ext:enable', id),
+        disable: (id: string) => ipcRenderer.invoke('ext:disable', id),
+        listAvailable: (repoUrl: string) => ipcRenderer.invoke('ext:listAvailable', repoUrl),
+        install: (repoUrl: string, extensionId: string) =>
+            ipcRenderer.invoke('ext:install', repoUrl, extensionId),
+        uninstall: (extensionId: string) => ipcRenderer.invoke('ext:uninstall', extensionId),
+        getPopularManga: (extensionId: string, page: number) =>
+            ipcRenderer.invoke('ext:getPopularManga', extensionId, page),
+        getLatestManga: (extensionId: string, page: number) =>
+            ipcRenderer.invoke('ext:getLatestManga', extensionId, page),
+        searchManga: (extensionId: string, query: string, page: number) =>
+            ipcRenderer.invoke('ext:searchManga', extensionId, query, page),
+        getMangaDetails: (extensionId: string, mangaId: string) =>
+            ipcRenderer.invoke('ext:getMangaDetails', extensionId, mangaId),
+        getChapterList: (extensionId: string, mangaId: string) =>
+            ipcRenderer.invoke('ext:getChapterList', extensionId, mangaId),
+        getChapterPages: (extensionId: string, chapterId: string) =>
+            ipcRenderer.invoke('ext:getChapterPages', extensionId, chapterId),
+    },
+
+    getProxiedImageUrl: (url: string, extensionId: string) => {
+        return `manga-image://proxy?url=${encodeURIComponent(url)}&ext=${extensionId}`;
+    },
+
+    window: {
+        minimize: () => ipcRenderer.invoke('window:minimize'),
+        maximize: () => ipcRenderer.invoke('window:maximize'),
+        close: () => ipcRenderer.invoke('window:close'),
+    },
+});
