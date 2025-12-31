@@ -79,6 +79,7 @@
   --text-muted: var(--color-text-muted);
   --border-color: var(--color-border);
   --accent-color: var(--color-accent);
+  --primary: var(--color-accent);
 }
 
 /* Light Theme - Softer, easier on the eyes */

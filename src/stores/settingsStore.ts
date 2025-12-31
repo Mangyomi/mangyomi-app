@@ -13,6 +13,7 @@ interface SettingsState {
     hideNsfwInHistory: boolean;
     hideNsfwInTags: boolean;
     hideNsfwCompletely: boolean;
+    developerMode: boolean;
     setTheme: (theme: Theme) => void;
     setDefaultReaderMode: (mode: ReaderMode) => void;
     setPrefetchChapters: (count: number) => void;
@@ -23,6 +24,7 @@ interface SettingsState {
     setHideNsfwInHistory: (value: boolean) => void;
     setHideNsfwInTags: (value: boolean) => void;
     setHideNsfwCompletely: (value: boolean) => void;
+    setDeveloperMode: (value: boolean) => void;
     loadSettings: () => void;
 }
 
@@ -73,6 +75,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     hideNsfwInHistory: false,
     hideNsfwInTags: false,
     hideNsfwCompletely: false,
+    developerMode: false,
 
     setTheme: (theme) => {
         set({ theme });
@@ -133,6 +136,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         saveToStorage({ hideNsfwCompletely: value } as any);
     },
 
+    setDeveloperMode: (value) => {
+        set({ developerMode: value });
+        saveToStorage({ developerMode: value } as any);
+    },
+
     loadSettings: () => {
         const stored = loadFromStorage();
         if (stored.theme) {
@@ -168,6 +176,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         }
         if ((stored as any).hideNsfwCompletely !== undefined) {
             set({ hideNsfwCompletely: (stored as any).hideNsfwCompletely });
+        }
+        if ((stored as any).developerMode !== undefined) {
+            set({ developerMode: (stored as any).developerMode });
         }
     },
 }));

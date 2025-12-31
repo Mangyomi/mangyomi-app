@@ -7,6 +7,7 @@ import './MangaDetail.css';
 
 import TagSelector from '../components/TagSelector';
 import AniListLinkModal from '../components/AniListLinkModal/AniListLinkModal';
+import { Icons } from '../components/Icons';
 
 function MangaDetail() {
     const { extensionId, mangaId } = useParams<{ extensionId: string; mangaId: string }>();
@@ -186,10 +187,10 @@ function MangaDetail() {
     if (error || !currentManga) {
         return (
             <div className="empty-state">
-                <div className="empty-state-icon">❌</div>
+                <div className="empty-state-icon"><Icons.AlertTriangle width={48} height={48} color="var(--color-error)" /></div>
                 <h2 className="empty-state-title">{error || 'Manga not found'}</h2>
                 <button className="btn btn-primary" onClick={() => navigate(-1)}>
-                    Go Back
+                    <Icons.ArrowLeft width={18} height={18} style={{ marginRight: '6px' }} /> Go Back
                 </button>
             </div>
         );
@@ -252,22 +253,22 @@ function MangaDetail() {
                             {isInLibrary ? (
                                 <>
                                     <button className="btn btn-secondary" onClick={handleRemoveFromLibrary}>
-                                        ✓ In Library
+                                        <Icons.Check width={16} height={16} style={{ marginRight: '6px' }} /> In Library
                                     </button>
                                     <button className="btn btn-secondary" onClick={() => setIsTagSelectorOpen(true)}>
-                                        🏷 Tags
+                                        <Icons.Tag width={16} height={16} style={{ marginRight: '6px' }} /> Tags
                                     </button>
                                     <button
                                         className={`btn ${anilistId ? 'btn-anilist-linked' : 'btn-secondary'}`}
                                         onClick={() => setIsAniListModalOpen(true)}
                                         title={anilistId ? `Linked to AniList (ID: ${anilistId})` : 'Track on AniList'}
                                     >
-                                        📊 {anilistId ? 'Tracking' : 'Track'}
+                                        <Icons.Chart width={16} height={16} style={{ marginRight: '6px' }} /> {anilistId ? 'Tracking' : 'Track'}
                                     </button>
                                 </>
                             ) : (
                                 <button className="btn btn-primary" onClick={handleAddToLibrary}>
-                                    + Add to Library
+                                    <Icons.Plus width={18} height={18} style={{ marginRight: '6px' }} /> Add to Library
                                 </button>
                             )}
                             {currentChapters.length > 0 && (
@@ -275,7 +276,7 @@ function MangaDetail() {
                                     className="btn btn-primary"
                                     onClick={() => handleReadChapter(currentChapters[currentChapters.length - 1].id)}
                                 >
-                                    ▶ Start Reading
+                                    <Icons.Play width={18} height={18} style={{ marginRight: '6px', fill: 'currentColor' }} /> Start Reading
                                 </button>
                             )}
                         </div>

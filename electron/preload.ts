@@ -38,6 +38,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
         listAvailable: (repoUrl: string) => ipcRenderer.invoke('ext:listAvailable', repoUrl),
         install: (repoUrl: string, extensionId: string) =>
             ipcRenderer.invoke('ext:install', repoUrl, extensionId),
+        sideload: () => ipcRenderer.invoke('ext:sideload'),
         uninstall: (extensionId: string) => ipcRenderer.invoke('ext:uninstall', extensionId),
         getPopularManga: (extensionId: string, page: number) =>
             ipcRenderer.invoke('ext:getPopularManga', extensionId, page),

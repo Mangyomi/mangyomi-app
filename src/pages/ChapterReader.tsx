@@ -224,7 +224,7 @@ function ChapterReader() {
                     </button>
 
                     <div className="reader-title">
-                        <span className="chapter-name">Chapter {chapterId.split('/').pop()?.replace('chapter-', '')}</span>
+                        <span className="chapter-name">{currentChapters.find(c => c.id === chapterId)?.title || `Chapter ${chapterId.split('/').pop()?.replace('chapter-', '')}`}</span>
                         <span className="page-indicator">
                             {currentPageIndex + 1} / {currentPages.length}
                         </span>

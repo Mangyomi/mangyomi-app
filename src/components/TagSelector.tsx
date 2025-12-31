@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '../stores/appStore';
+import { Icons } from './Icons';
 import './TagSelector.css';
 
 interface TagSelectorProps {
@@ -57,7 +58,9 @@ function TagSelector({ mangaId, onClose }: TagSelectorProps) {
             <div className="tag-selector-modal" onClick={e => e.stopPropagation()}>
                 <div className="tag-selector-header">
                     <h3>Manage Tags</h3>
-                    <button className="close-btn" onClick={onClose}>×</button>
+                    <button className="close-btn" onClick={onClose}>
+                        <Icons.X width={16} height={16} />
+                    </button>
                 </div>
 
                 <div className="tag-creation">
@@ -89,7 +92,7 @@ function TagSelector({ mangaId, onClose }: TagSelectorProps) {
                         >
                             <span className="tag-color" style={{ background: tag.color }}></span>
                             <span className="tag-name">{tag.name}</span>
-                            {activeTagIds.has(tag.id) && <span className="check-mark">✓</span>}
+                            {activeTagIds.has(tag.id) && <span className="check-mark"><Icons.Check width={14} height={14} /></span>}
                         </div>
                     ))}
                 </div>

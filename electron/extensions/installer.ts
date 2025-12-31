@@ -157,8 +157,17 @@ export async function listAvailableExtensions(repoUrl: string): Promise<Availabl
         for (const folder of extensionFolders) {
             const manifest = readManifest(folder);
             if (manifest) {
+                // Construct raw GitHub URL for icon if it's a relative path
+                let iconUrl = manifest.icon;
+                if (manifest.icon && !manifest.icon.startsWith('http')) {
+                    const relativeIconPath = path.join(path.basename(folder), manifest.icon).replace(/\\/g, '/');
+                    // Assuming standard GitHub structure: https://raw.githubusercontent.com/owner/repo/branch/path/to/icon
+                    iconUrl = `https://raw.githubusercontent.com/${parsed.owner}/${parsed.repo}/${parsed.branch || 'main'}/${relativeIconPath}`;
+                }
+
                 extensions.push({
                     ...manifest,
+                    icon: iconUrl,
                     repoUrl,
                     folderName: path.basename(folder),
                 });
@@ -265,6 +274,37 @@ function copyFolderRecursive(source: string, target: string): void {
         } else {
             fs.copyFileSync(srcPath, destPath);
         }
+    }
+}
+
+/**
+ * Install a local extension from a folder path
+ */
+export function installLocalExtension(
+    sourcePath: string,
+    extensionsPath: string
+): InstallResult {
+    try {
+        const manifest = readManifest(sourcePath);
+        if (!manifest) {
+            return { success: false, error: 'Invalid or missing manifest.json' };
+        }
+
+        const targetPath = path.join(extensionsPath, manifest.id);
+
+        if (fs.existsSync(targetPath)) {
+            fs.rmSync(targetPath, { recursive: true, force: true });
+        }
+
+        fs.mkdirSync(targetPath, { recursive: true });
+        copyFolderRecursive(sourcePath, targetPath);
+
+        return { success: true, extension: manifest };
+    } catch (error) {
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error during local installation'
+        };
     }
 }
 

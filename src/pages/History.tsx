@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppStore } from '../stores/appStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useDialog } from '../components/ConfirmModal/DialogContext';
+import { Icons } from '../components/Icons';
 import './History.css';
 
 function History() {
@@ -66,7 +67,7 @@ function History() {
                     <h1 className="page-title">History</h1>
                 </div>
                 <div className="empty-state">
-                    <div className="empty-state-icon">📖</div>
+                    <div className="empty-state-icon"><Icons.Book width={48} height={48} /></div>
                     <h2 className="empty-state-title">No reading history yet</h2>
                     <p className="empty-state-description">
                         Start reading manga to see your history here
@@ -143,11 +144,7 @@ function History() {
                                             }}
                                             title="Remove from history"
                                         >
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                <path d="M3 6h18"></path>
-                                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                                            </svg>
+                                            <Icons.Trash width={18} height={18} />
                                         </button>
                                         <button className="btn btn-secondary history-continue">
                                             Continue

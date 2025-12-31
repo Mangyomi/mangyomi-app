@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import MangaCard from '../components/MangaCard';
+import { Icons } from '../components/Icons';
 import './Browse.css';
 
 function Browse() {
@@ -65,6 +66,14 @@ function Browse() {
         };
     }, [browseHasMore, browseLoading, loadMoreBrowse]);
 
+    const getIconUrl = (iconPath?: string) => {
+        if (!iconPath) return null;
+        if (iconPath.startsWith('http')) return iconPath;
+        const normalizedPath = iconPath.replace(/\\/g, '/');
+        const fileUrl = `file:///${normalizedPath}`;
+        return `manga-image://?url=${encodeURIComponent(fileUrl)}&ext=local`;
+    };
+
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         if (searchQuery.trim()) {
@@ -81,7 +90,7 @@ function Browse() {
         return (
             <div className="browse-page">
                 <div className="empty-state">
-                    <div className="empty-state-icon">🔌</div>
+                    <div className="empty-state-icon"><Icons.Plug width={48} height={48} /></div>
                     <h2 className="empty-state-title">No extensions enabled</h2>
                     <p className="empty-state-description">
                         Enable extensions in the Extensions page to browse manga sources
@@ -108,7 +117,11 @@ function Browse() {
                         className={`extension-btn ${selectedExtension?.id === ext.id ? 'active' : ''}`}
                         onClick={() => selectedExtension?.id === ext.id ? null : selectExtension(ext)}
                     >
-                        <span className="extension-icon">📖</span>
+                        <span className="extension-icon">
+                            {ext.icon ? (
+                                <img src={getIconUrl(ext.icon) || ''} alt="" className="ext-icon-img-small" />
+                            ) : <Icons.Book width={18} height={18} opacity={0.7} />}
+                        </span>
                         <span className="extension-name">{ext.name}</span>
                     </button>
                 ))}
@@ -134,17 +147,17 @@ function Browse() {
                     className={`tab ${activeTab === 'popular' && browseMode !== 'search' ? 'active' : ''}`}
                     onClick={() => handleTabChange('popular')}
                 >
-                    🔥 Popular
+                    <Icons.Popular /> Popular
                 </button>
                 <button
                     className={`tab ${activeTab === 'latest' && browseMode !== 'search' ? 'active' : ''}`}
                     onClick={() => handleTabChange('latest')}
                 >
-                    🆕 Latest
+                    <Icons.Latest /> Latest
                 </button>
                 {browseMode === 'search' && (
                     <button className="tab active">
-                        🔍 Search Results
+                        <Icons.Search /> Search Results
                     </button>
                 )}
             </div>
@@ -152,7 +165,7 @@ function Browse() {
             {/* Manga Grid */}
             {browseManga.length === 0 && !browseLoading ? (
                 <div className="empty-state">
-                    <div className="empty-state-icon">📭</div>
+                    <div className="empty-state-icon"><Icons.Inbox width={48} height={48} /></div>
                     <h2 className="empty-state-title">No manga found</h2>
                     <p className="empty-state-description">
                         {browseMode === 'search'

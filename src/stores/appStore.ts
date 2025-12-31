@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useAniListStore } from './anilistStore';
 
 export interface Manga {
     id: string;
@@ -460,6 +461,17 @@ export const useAppStore = create<AppState>((set, get) => ({
             });
 
             get().loadLibrary();
+
+            get().loadLibrary();
+
+            // Sync with AniList
+            const extensionId = currentManga.extensionId || currentManga.source_id;
+            const dbMangaId = `${extensionId}:${currentManga.id}`;
+            const libraryEntry = get().library.find(m => m.id === dbMangaId);
+
+            if (libraryEntry?.anilist_id) {
+                await useAniListStore.getState().syncProgress(dbMangaId);
+            }
         } catch (error) {
             console.error('Failed to mark chapter read:', error);
         }
@@ -510,6 +522,11 @@ export const useAppStore = create<AppState>((set, get) => ({
             });
 
             get().loadLibrary();
+
+            // Sync with AniList
+            if (currentManga && (currentManga.anilist_id || currentManga.anilistId)) {
+                await useAniListStore.getState().syncProgress(currentManga.id);
+            }
         } catch (e) {
             console.error('Failed to mark unread:', e);
         }
@@ -557,6 +574,11 @@ export const useAppStore = create<AppState>((set, get) => ({
             });
 
             get().loadLibrary();
+
+            // Sync with AniList
+            if (currentManga && (currentManga.anilist_id || currentManga.anilistId)) {
+                await useAniListStore.getState().syncProgress(currentManga.id);
+            }
         } catch (e) {
             console.error('Failed to bulk mark read:', e);
         }

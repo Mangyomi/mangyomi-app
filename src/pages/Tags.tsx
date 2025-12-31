@@ -3,6 +3,7 @@ import { useAppStore, Tag, Manga } from '../stores/appStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import MangaCard from '../components/MangaCard/MangaCard';
 import ConfirmModal from '../components/ConfirmModal/ConfirmModal';
+import { Icons } from '../components/Icons';
 import './Tags.css';
 
 const TAG_COLORS = [
@@ -139,7 +140,7 @@ function Tags() {
                     </div>
                 ) : filteredTagManga.length === 0 ? (
                     <div className="empty-state">
-                        <div className="empty-state-icon">📚</div>
+                        <div className="empty-state-icon"><Icons.Library width={64} height={64} /></div>
                         <h2 className="empty-state-title">No manga with this tag</h2>
                         <p className="empty-state-description">
                             Add this tag to manga from their details page.
@@ -234,7 +235,7 @@ function Tags() {
             {/* Tags List */}
             {tags.length === 0 ? (
                 <div className="empty-state">
-                    <div className="empty-state-icon">🏷️</div>
+                    <div className="empty-state-icon"><Icons.Tag width={48} height={48} /></div>
                     <h2 className="empty-state-title">No tags yet</h2>
                     <p className="empty-state-description">
                         Create tags to organize your manga collection
@@ -263,14 +264,14 @@ function Tags() {
                                     title="Edit"
                                     onClick={(e) => openEditModal(tag, e)}
                                 >
-                                    ✎
+                                    <Icons.Edit width={16} height={16} />
                                 </button>
                                 <button
                                     className="btn btn-ghost btn-icon tag-action-btn delete"
                                     title="Delete"
                                     onClick={(e) => handleDeleteClick(tag, e)}
                                 >
-                                    ✕
+                                    <Icons.Trash width={16} height={16} />
                                 </button>
                             </div>
                         </div>

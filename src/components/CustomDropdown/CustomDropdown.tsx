@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { Icons } from '../Icons';
 import './CustomDropdown.css';
 
 interface DropdownOption {
@@ -43,7 +44,7 @@ function CustomDropdown({ options, value, onChange, placeholder = 'Select...' }:
                 type="button"
             >
                 <span className="dropdown-value">{selectedOption?.label || placeholder}</span>
-                <span className="dropdown-arrow">▾</span>
+                <span className="dropdown-arrow"><Icons.ChevronDown width={14} height={14} /></span>
             </button>
 
             {isOpen && (
@@ -56,7 +57,7 @@ function CustomDropdown({ options, value, onChange, placeholder = 'Select...' }:
                             type="button"
                         >
                             {option.label}
-                            {option.value === value && <span className="check-mark">✓</span>}
+                            {option.value === value && <span className="check-mark"><Icons.Check width={14} height={14} /></span>}
                         </button>
                     ))}
                 </div>

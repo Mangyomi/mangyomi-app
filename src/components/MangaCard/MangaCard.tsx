@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Icons } from '../Icons';
 import './MangaCard.css';
 
 interface MangaCardProps {
@@ -15,6 +17,7 @@ interface MangaCardProps {
 
 function MangaCard({ id, title, coverUrl, extensionId, index = 0, inLibrary, totalChapters, readChapters, onContextMenu }: MangaCardProps) {
     const navigate = useNavigate();
+    const [imageError, setImageError] = useState(false);
 
     const isFullyRead = inLibrary && totalChapters !== undefined && totalChapters > 0 && readChapters === totalChapters;
 
@@ -42,15 +45,18 @@ function MangaCard({ id, title, coverUrl, extensionId, index = 0, inLibrary, tot
             style={{ '--index': index } as React.CSSProperties}
         >
             <div className="manga-card-cover">
-                <img
-                    src={proxiedCoverUrl}
-                    alt={title}
-                    loading="lazy"
-                    onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="220" viewBox="0 0 160 220"><rect fill="%2327272a" width="160" height="220"/><text x="80" y="110" font-family="sans-serif" font-size="14" fill="%2371717a" text-anchor="middle">No Cover</text></svg>';
-                    }}
-                />
+                {!imageError && proxiedCoverUrl ? (
+                    <img
+                        src={proxiedCoverUrl}
+                        alt={title}
+                        loading="lazy"
+                        onError={() => setImageError(true)}
+                    />
+                ) : (
+                    <div className="manga-card-placeholder">
+                        <Icons.Book width={48} height={48} opacity={0.3} />
+                    </div>
+                )}
                 {inLibrary && (
                     <div className="manga-card-badge">
                         <span>{isFullyRead ? 'READ' : 'IN LIBRARY'}</span>

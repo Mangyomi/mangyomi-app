@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAniListStore, AniListMedia } from '../../stores/anilistStore';
+import { useAppStore } from '../../stores/appStore';
+import { useDialog } from '../ConfirmModal/DialogContext';
 import './AniListLinkModal.css';
 
 interface AniListLinkModalProps {
@@ -22,6 +24,8 @@ function AniListLinkModal({
     onUnlinked,
 }: AniListLinkModalProps) {
     const { searchManga, linkManga, unlinkManga, isAuthenticated } = useAniListStore();
+    const { library } = useAppStore();
+    const dialog = useDialog();
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<AniListMedia[]>([]);
     const [isSearching, setIsSearching] = useState(false);
@@ -50,6 +54,28 @@ function AniListLinkModal({
 
     const handleLink = async () => {
         if (!selectedMedia) return;
+
+        // Check if this AniList ID is already linked to another manga
+        const existingLink = library.find(m => m.anilist_id === selectedMedia.id && m.id !== mangaId);
+
+        if (existingLink) {
+            const confirmed = await dialog.confirm({
+                title: 'Already Linked',
+                message: `"${selectedMedia.title.english || selectedMedia.title.romaji}" is already linked to "${existingLink.title}" (${existingLink.source_id}) in your library.\n\nDo you want to unlink it from the existing manga and link it to this one instead?`,
+                confirmLabel: 'Unlink & Relink'
+            });
+
+            if (!confirmed) return;
+
+            // Unlink from the old one
+            const unlinkSuccess = await unlinkManga(existingLink.id);
+            if (!unlinkSuccess) {
+                // Could handle error here, but for now just return
+                console.error('Failed to unlink existing manga');
+                return;
+            }
+        }
+
         const success = await linkManga(mangaId, selectedMedia.id);
         if (success) {
             onLinked(selectedMedia.id);
@@ -130,29 +156,47 @@ function AniListLinkModal({
                                 ) : searchResults.length === 0 ? (
                                     <div className="no-results">No results found</div>
                                 ) : (
-                                    searchResults.map((media) => (
-                                        <div
-                                            key={media.id}
-                                            className={`result-item ${selectedMedia?.id === media.id ? 'selected' : ''}`}
-                                            onClick={() => setSelectedMedia(media)}
-                                        >
-                                            <img
-                                                src={media.coverImage.medium}
-                                                alt={media.title.romaji}
-                                                className="result-cover"
-                                            />
-                                            <div className="result-info">
-                                                <h4>{media.title.english || media.title.romaji}</h4>
-                                                {media.title.english && media.title.english !== media.title.romaji && (
-                                                    <p className="romaji-title">{media.title.romaji}</p>
-                                                )}
-                                                <p className="result-meta">
-                                                    {media.chapters ? `${media.chapters} chapters` : 'Ongoing'}
-                                                    {media.averageScore && ` • ${media.averageScore}%`}
-                                                </p>
+                                    searchResults.map((media) => {
+                                        const alreadyLinkedTo = library.find(m => m.anilist_id === media.id);
+                                        const isLinkedToThis = alreadyLinkedTo && alreadyLinkedTo.id === mangaId;
+                                        const isLinkedToOther = alreadyLinkedTo && alreadyLinkedTo.id !== mangaId;
+
+                                        return (
+                                            <div
+                                                key={media.id}
+                                                className={`result-item ${selectedMedia?.id === media.id ? 'selected' : ''}`}
+                                                onClick={() => setSelectedMedia(media)}
+                                            >
+                                                <img
+                                                    src={media.coverImage.medium}
+                                                    alt={media.title.romaji}
+                                                    className="result-cover"
+                                                />
+                                                <div className="result-info">
+                                                    <div className="result-title-row">
+                                                        <h4>{media.title.english || media.title.romaji}</h4>
+                                                        {isLinkedToOther && (
+                                                            <span className="linked-badge" title={`Already linked to "${alreadyLinkedTo.title}"`}>
+                                                                Linked
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {media.title.english && media.title.english !== media.title.romaji && (
+                                                        <p className="romaji-title">{media.title.romaji}</p>
+                                                    )}
+                                                    <p className="result-meta">
+                                                        {media.chapters ? `${media.chapters} chapters` : 'Ongoing'}
+                                                        {media.averageScore && ` • ${media.averageScore}%`}
+                                                    </p>
+                                                    {isLinkedToOther && (
+                                                        <p className="linked-info">
+                                                            Linked to: {alreadyLinkedTo.title}
+                                                        </p>
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))
+                                        );
+                                    })
                                 )}
                             </div>
                         </>
@@ -167,7 +211,9 @@ function AniListLinkModal({
                             onClick={handleLink}
                             disabled={!selectedMedia}
                         >
-                            Link Selected
+                            {selectedMedia && library.some(m => m.anilist_id === selectedMedia.id && m.id !== mangaId)
+                                ? 'Unlink & Link'
+                                : 'Link Selected'}
                         </button>
                     </div>
                 )}

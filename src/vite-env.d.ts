@@ -58,6 +58,7 @@ interface Window {
             disable: (id: string) => Promise<void>;
             listAvailable: (repoUrl: string) => Promise<AvailableExtension[]>;
             install: (repoUrl: string, extensionId: string) => Promise<InstallResult>;
+            sideload: () => Promise<InstallResult>;
             uninstall: (extensionId: string) => Promise<InstallResult>;
             getPopularManga: (extensionId: string, page: number) => Promise<any>;
             getLatestManga: (extensionId: string, page: number) => Promise<any>;

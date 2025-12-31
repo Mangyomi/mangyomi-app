@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Icons } from '../components/Icons';
 import { useAppStore, Manga } from '../stores/appStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useDialog } from '../components/ConfirmModal/DialogContext';
@@ -236,9 +237,10 @@ function Gallery() {
                 </div>
             </div>
 
+
             {filteredLibrary.length === 0 ? (
                 <div className="empty-state">
-                    <div className="empty-state-icon">📚</div>
+                    <div className="empty-state-icon"><Icons.Library width={64} height={64} opacity={0.5} /></div>
                     <h2 className="empty-state-title">
                         {searchQuery ? 'No results found' : 'Your library is empty'}
                     </h2>

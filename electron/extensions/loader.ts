@@ -76,6 +76,7 @@ export async function loadExtensions(extensionsPath: string): Promise<void> {
 
             const extension: MangaExtension = {
                 ...manifest,
+                icon: manifest.icon ? path.join(extPath, manifest.icon) : undefined,
                 getImageHeaders: extModule.getImageHeaders,
                 getPopularManga: extModule.getPopularManga,
                 getLatestManga: extModule.getLatestManga,

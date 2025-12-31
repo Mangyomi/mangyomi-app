@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { initDatabase, getDatabase } from './database';
 import { loadExtensions, getExtension, getAllExtensions, reloadExtensions } from './extensions/loader';
-import { listAvailableExtensions, installExtension, uninstallExtension, isExtensionInstalled } from './extensions/installer';
+import { listAvailableExtensions, installExtension, uninstallExtension, isExtensionInstalled, installLocalExtension } from './extensions/installer';
 import { anilistAPI, setClientId, openAuthWindow, logout, isAuthenticated, serializeTokenData, deserializeTokenData } from './anilist';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -204,6 +204,11 @@ function setupImageProxy() {
         };
 
         try {
+            // 0. Bypass cache for local files (icons) to preserve transparency/format
+            if (imageUrl.startsWith('file:') || extensionId === 'local') {
+                return net.fetch(imageUrl);
+            }
+
             // 1. Check cover cache with TTL (for covers)
             const cachedCoverPath = imageCache.getCachedCoverPath(imageUrl);
             if (cachedCoverPath) {
@@ -592,6 +597,28 @@ function setupIpcHandlers(extensionsPath: string) {
             await reloadExtensions(extensionsPath);
         }
         return result;
+    });
+
+    ipcMain.handle('ext:sideload', async () => {
+        const { dialog } = await import('electron');
+        const result = await dialog.showOpenDialog(mainWindow as any, {
+            properties: ['openDirectory'],
+            title: 'Select Extension Directory',
+            buttonLabel: 'Install Extension'
+        });
+
+        if (result.canceled || result.filePaths.length === 0) {
+            return { success: false, error: 'Installation cancelled' };
+        }
+
+        const sourcePath = result.filePaths[0];
+        const installResult = installLocalExtension(sourcePath, extensionsPath);
+
+        if (installResult.success) {
+            await reloadExtensions(extensionsPath);
+        }
+
+        return installResult;
     });
 
     ipcMain.handle('ext:uninstall', async (_, extensionId: string) => {
