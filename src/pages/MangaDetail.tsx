@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../stores/appStore';
+import { useDialog } from '../components/ConfirmModal/DialogContext';
 import './MangaDetail.css';
 
 import TagSelector from '../components/TagSelector';
@@ -17,6 +18,7 @@ function MangaDetail() {
         removeFromLibrary,
         library,
     } = useAppStore();
+    const dialog = useDialog();
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -82,7 +84,12 @@ function MangaDetail() {
 
     const handleMarkAllUnread = async () => {
         if (!currentChapters.length) return;
-        if (confirm('Mark all chapters as unread?')) {
+        const confirmed = await dialog.confirm({
+            title: 'Mark All Unread',
+            message: 'Mark all chapters as unread?',
+            confirmLabel: 'Mark Unread',
+        });
+        if (confirmed) {
             const ids = currentChapters.map(c => c.id);
             await useAppStore.getState().markChaptersUnread(ids);
         }
@@ -105,7 +112,12 @@ function MangaDetail() {
         }
 
         if (idsToMark.length > 0) {
-            if (confirm(`Mark ${idsToMark.length} chapters as read?`)) {
+            const confirmed = await dialog.confirm({
+                title: 'Mark Chapters Read',
+                message: `Mark ${idsToMark.length} chapters as read?`,
+                confirmLabel: 'Mark Read',
+            });
+            if (confirmed) {
                 await useAppStore.getState().markChaptersRead(idsToMark);
             }
         }

@@ -81,25 +81,30 @@
   --accent-color: var(--color-accent);
 }
 
-/* Light Theme */
+/* Light Theme - Softer, easier on the eyes */
 [data-theme="light"] {
-  --color-bg-primary: #ffffff;
-  --color-bg-secondary: #f8f9fa;
-  --color-bg-tertiary: #f1f3f4;
-  --color-bg-elevated: #ffffff;
-  --color-bg-hover: #e8eaed;
+  --color-bg-primary: #f5f3f0;
+  --color-bg-secondary: #edeae6;
+  --color-bg-tertiary: #e5e2dd;
+  --color-bg-elevated: #faf8f6;
+  --color-bg-hover: #dddad5;
 
-  --color-text-primary: #1f1f1f;
-  --color-text-secondary: #5f6368;
-  --color-text-muted: #80868b;
+  --color-text-primary: #2d2a26;
+  --color-text-secondary: #5c5650;
+  --color-text-muted: #8a847c;
 
-  --color-border: #e0e0e0;
-  --color-border-hover: #d0d0d0;
+  --color-border: #d8d4ce;
+  --color-border-hover: #c9c4bc;
 
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
-  --shadow-glow: 0 0 20px rgba(139, 92, 246, 0.2);
+  /* Warm accent for light theme */
+  --color-accent: #c2785c;
+  --color-accent-hover: #d4896d;
+  --color-accent-muted: rgba(194, 120, 92, 0.15);
+
+  --shadow-sm: 0 1px 2px 0 rgba(45, 42, 38, 0.08);
+  --shadow-md: 0 4px 6px -1px rgba(45, 42, 38, 0.08), 0 2px 4px -2px rgba(45, 42, 38, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(45, 42, 38, 0.08), 0 4px 6px -4px rgba(45, 42, 38, 0.04);
+  --shadow-glow: 0 0 20px rgba(194, 120, 92, 0.2);
 }
 
 /* Reset */

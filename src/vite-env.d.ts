@@ -69,6 +69,12 @@ interface Window {
         app: {
             createDumpLog: (consoleLogs: string, networkActivity: string) => Promise<{ success: boolean; path: string }>;
         };
+        cache: {
+            save: (url: string, extensionId: string, mangaId: string, chapterId: string) => Promise<string>;
+            clear: (mangaId?: string) => Promise<void>;
+            setLimit: (bytes: number) => Promise<void>;
+            getSize: () => Promise<number>;
+        };
         getProxiedImageUrl: (url: string, extensionId: string) => string;
     };
 }

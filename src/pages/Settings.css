@@ -76,6 +76,10 @@
     flex-shrink: 0;
 }
 
+.setting-item.align-end {
+    align-items: flex-end;
+}
+
 /* Toggle Group */
 .toggle-group {
     display: flex;

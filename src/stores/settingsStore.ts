@@ -7,10 +7,12 @@ interface SettingsState {
     theme: Theme;
     defaultReaderMode: ReaderMode;
     prefetchChapters: number; // 0 = disabled, 1-4 = chapters to prefetch ahead/behind
+    maxCacheSize: number; // in bytes
     disabledExtensions: Set<string>;
     setTheme: (theme: Theme) => void;
     setDefaultReaderMode: (mode: ReaderMode) => void;
     setPrefetchChapters: (count: number) => void;
+    setMaxCacheSize: (size: number) => void;
     toggleExtension: (extensionId: string) => void;
     isExtensionEnabled: (extensionId: string) => boolean;
     loadSettings: () => void;
@@ -57,6 +59,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     theme: 'dark',
     defaultReaderMode: 'vertical',
     prefetchChapters: 0,
+    maxCacheSize: 1024 * 1024 * 1024, // 1GB
     disabledExtensions: new Set<string>(),
 
     setTheme: (theme) => {
@@ -74,6 +77,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         const validCount = Math.max(0, Math.min(4, count));
         set({ prefetchChapters: validCount });
         saveToStorage({ prefetchChapters: validCount });
+    },
+
+    setMaxCacheSize: (size) => {
+        set({ maxCacheSize: size });
+        saveToStorage({ maxCacheSize: size });
+        window.electronAPI.cache.setLimit(size);
     },
 
     toggleExtension: (extensionId) => {
@@ -105,6 +114,13 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         }
         if (stored.prefetchChapters !== undefined) {
             set({ prefetchChapters: stored.prefetchChapters as number });
+        }
+        if (stored.maxCacheSize !== undefined) {
+            set({ maxCacheSize: stored.maxCacheSize as number });
+            // Sync initial limit to backend
+            setTimeout(() => {
+                window.electronAPI.cache.setLimit(stored.maxCacheSize as number);
+            }, 1000); // Small delay to ensure backend is ready
         }
         if ((stored as any).disabledExtensions) {
             set({ disabledExtensions: new Set((stored as any).disabledExtensions as string[]) });

@@ -70,4 +70,15 @@ CREATE INDEX IF NOT EXISTS idx_history_manga ON history(manga_id);
 CREATE INDEX IF NOT EXISTS idx_history_read_at ON history(read_at DESC);
 CREATE INDEX IF NOT EXISTS idx_manga_tag_manga ON manga_tag(manga_id);
 CREATE INDEX IF NOT EXISTS idx_manga_tag_tag ON manga_tag(tag_id);
+
+-- Image Caching
+CREATE TABLE IF NOT EXISTS image_cache (
+  url TEXT PRIMARY KEY,
+  hash TEXT NOT NULL,
+  manga_id TEXT NOT NULL,
+  chapter_id TEXT NOT NULL,
+  size INTEGER,
+  cached_at INTEGER DEFAULT (strftime('%s', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_cache_chapter ON image_cache(chapter_id);
 `;

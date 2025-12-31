@@ -1,0 +1,200 @@
+import { app, net } from 'electron';
+import path from 'path';
+import fs from 'fs';
+import crypto from 'crypto';
+import { getDatabase } from '../database';
+
+class ImageCache {
+    private cacheDir: string;
+    private initialized: boolean = false;
+    private maxCacheSize: number = 1024 * 1024 * 1024; // Default 1GB
+    private isPruning: boolean = false;
+
+    constructor() {
+        this.cacheDir = path.join(app.getPath('userData'), 'cache', 'images');
+    }
+
+    init() {
+        if (!fs.existsSync(this.cacheDir)) {
+            fs.mkdirSync(this.cacheDir, { recursive: true });
+        }
+        this.initialized = true;
+    }
+
+    setLimit(bytes: number) {
+        this.maxCacheSize = bytes;
+        this.prune(); // Prune immediately if new limit is smaller
+    }
+
+    getCacheSize(): number {
+        const parentCacheDir = path.dirname(this.cacheDir);
+        if (!fs.existsSync(parentCacheDir)) return 0;
+
+        let totalSize = 0;
+        const walkDir = (dir: string) => {
+            const entries = fs.readdirSync(dir, { withFileTypes: true });
+            for (const entry of entries) {
+                const fullPath = path.join(dir, entry.name);
+                if (entry.isDirectory()) {
+                    walkDir(fullPath);
+                } else {
+                    totalSize += fs.statSync(fullPath).size;
+                }
+            }
+        };
+        walkDir(parentCacheDir);
+        return totalSize;
+    }
+
+    getCachedImagePath(url: string): string | null {
+        if (!this.initialized) this.init();
+
+        const hash = crypto.createHash('sha256').update(url).digest('hex');
+        const filePath = path.join(this.cacheDir, hash);
+
+        if (fs.existsSync(filePath)) {
+            // Touch cached_at to mark as recently used
+            try {
+                const db = getDatabase();
+                db.prepare('UPDATE image_cache SET cached_at = strftime(\'%s\', \'now\') WHERE url = ?').run(url);
+            } catch (e) { /* ignore db lock errors on read */ }
+            return filePath;
+        }
+        return null;
+    }
+
+    private async prune() {
+        if (this.isPruning) return;
+        this.isPruning = true;
+
+        try {
+            const db = getDatabase();
+
+            // Get total size
+            const result = db.prepare('SELECT SUM(size) as total FROM image_cache').get() as { total: number };
+            let currentSize = result?.total || 0;
+
+            if (currentSize <= this.maxCacheSize) {
+                this.isPruning = false;
+                return;
+            }
+
+            console.log(`[Cache] Pruning: Current ${Math.round(currentSize / 1024 / 1024)}MB > Limit ${Math.round(this.maxCacheSize / 1024 / 1024)}MB`);
+
+            // Find oldest files to delete
+            // Delete in chunks
+            const rows = db.prepare('SELECT url, hash, size FROM image_cache ORDER BY cached_at ASC LIMIT 50').all() as { url: string, hash: string, size: number }[];
+
+            for (const row of rows) {
+                if (currentSize <= this.maxCacheSize) break;
+
+                const filePath = path.join(this.cacheDir, row.hash);
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                }
+
+                db.prepare('DELETE FROM image_cache WHERE url = ?').run(row.url);
+                currentSize -= row.size;
+            }
+
+            // Recurse if still over limit (but yield to event loop)
+            if (currentSize > this.maxCacheSize) {
+                setImmediate(() => {
+                    this.isPruning = false;
+                    this.prune();
+                });
+                return;
+            }
+
+        } catch (e) {
+            console.error('[Cache] Prune failed:', e);
+        } finally {
+            this.isPruning = false;
+        }
+    }
+
+    async saveToCache(url: string, headers: Record<string, string>, mangaId: string, chapterId: string): Promise<string> {
+        if (!this.initialized) this.init();
+
+        const hash = crypto.createHash('sha256').update(url).digest('hex');
+        const filePath = path.join(this.cacheDir, hash);
+        const db = getDatabase();
+
+        // 1. Check if already cached
+        if (fs.existsSync(filePath)) {
+            try {
+                // Update registry to link this image to this chapter (if not already)
+                // and update timestamp
+                db.prepare(`
+                    INSERT INTO image_cache (url, hash, manga_id, chapter_id, size, cached_at)
+                    VALUES (@url, @hash, @manga_id, @chapter_id, @size, strftime('%s', 'now'))
+                    ON CONFLICT(url) DO UPDATE SET
+                    cached_at = strftime('%s', 'now')
+                `).run({
+                    '@url': url,
+                    '@hash': hash,
+                    '@manga_id': mangaId,
+                    '@chapter_id': chapterId,
+                    '@size': fs.statSync(filePath).size
+                });
+            } catch (e) { console.error('Cache DB update failed', e); }
+            return filePath;
+        }
+
+        // 2. Download
+        try {
+            const response = await net.fetch(url, { headers });
+            if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+
+            const buffer = await response.arrayBuffer();
+            const data = new Uint8Array(buffer);
+
+            await fs.promises.writeFile(filePath, data);
+
+            // 3. Register in DB
+            db.prepare(`
+                INSERT OR REPLACE INTO image_cache (url, hash, manga_id, chapter_id, size, cached_at)
+                VALUES (@url, @hash, @manga_id, @chapter_id, @size, strftime('%s', 'now'))
+            `).run({
+                '@url': url,
+                '@hash': hash,
+                '@manga_id': mangaId,
+                '@chapter_id': chapterId,
+                '@size': data.length
+            });
+
+            // 4. Prune Check
+            this.prune();
+
+            return filePath;
+        } catch (error) {
+            console.error('Failed to cache image:', url, error);
+            throw error;
+        }
+    }
+
+    async clearCache(mangaId?: string) {
+        const db = getDatabase();
+
+        if (mangaId) {
+            // Delete specific manga images
+            const rows = db.prepare('SELECT hash FROM image_cache WHERE manga_id = ?').all(mangaId) as { hash: string }[];
+            for (const row of rows) {
+                const filePath = path.join(this.cacheDir, row.hash);
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                }
+            }
+            db.prepare('DELETE FROM image_cache WHERE manga_id = ?').run(mangaId);
+        } else {
+            // Only delete our images folder (Chromium caches are locked while app runs)
+            if (fs.existsSync(this.cacheDir)) {
+                fs.rmSync(this.cacheDir, { recursive: true, force: true });
+                fs.mkdirSync(this.cacheDir, { recursive: true });
+            }
+            db.prepare('DELETE FROM image_cache').run();
+        }
+    }
+}
+
+export const imageCache = new ImageCache();

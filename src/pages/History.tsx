@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppStore } from '../stores/appStore';
 import { useSettingsStore } from '../stores/settingsStore';
+import { useDialog } from '../components/ConfirmModal/DialogContext';
 import './History.css';
 
 function History() {
@@ -9,6 +10,7 @@ function History() {
     const { disabledExtensions } = useSettingsStore();
     const navigate = useNavigate();
     const location = useLocation();
+    const dialog = useDialog();
 
     useEffect(() => {
         loadHistory();
@@ -117,9 +119,15 @@ function History() {
                                         </div>
                                         <button
                                             className="history-delete-btn"
-                                            onClick={(e) => {
+                                            onClick={async (e) => {
                                                 e.stopPropagation();
-                                                if (confirm('Remove this manga from history?')) {
+                                                const confirmed = await dialog.confirm({
+                                                    title: 'Remove from History',
+                                                    message: 'Remove this manga from history?',
+                                                    confirmLabel: 'Remove',
+                                                    isDestructive: true,
+                                                });
+                                                if (confirmed) {
                                                     removeFromHistory(entry.manga_id);
                                                 }
                                             }}

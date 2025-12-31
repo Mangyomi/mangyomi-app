@@ -248,6 +248,27 @@ export async function initDatabase(dbPath: string): Promise<DatabaseWrapper> {
         console.error('Migration failed:', error);
     }
 
+    // Migration: Create image_cache table if it doesn't exist
+    try {
+        const hasImageCache = dbWrapper.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='image_cache'").get();
+        if (!hasImageCache) {
+            console.log('Migrating database: creating image_cache table');
+            dbWrapper.exec(`
+                CREATE TABLE IF NOT EXISTS image_cache (
+                  url TEXT PRIMARY KEY,
+                  hash TEXT NOT NULL,
+                  manga_id TEXT NOT NULL,
+                  chapter_id TEXT NOT NULL,
+                  size INTEGER,
+                  cached_at INTEGER DEFAULT (strftime('%s', 'now'))
+                );
+                CREATE INDEX IF NOT EXISTS idx_cache_chapter ON image_cache(chapter_id);
+             `);
+        }
+    } catch (error) {
+        console.error('Image Cache Migration failed:', error);
+    }
+
     console.log('Database initialized at:', dbPath);
     return dbWrapper;
 }

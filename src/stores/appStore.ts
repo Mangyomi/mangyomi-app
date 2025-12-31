@@ -599,6 +599,25 @@ export const useAppStore = create<AppState>((set, get) => ({
             console.log('Prefetching chapter:', chapterId);
             const pages = await window.electronAPI.extensions.getChapterPages(extensionId, chapterId);
 
+            // Trigger offline caching
+            const { currentManga } = get();
+            const mangaId = currentManga?.id || 'unknown';
+
+            // Download in background with throttling (3 concurrent requests) from current store state
+            const processPages = async () => {
+                const CONCURRENCY = 3;
+                for (let i = 0; i < pages.length; i += CONCURRENCY) {
+                    const batch = pages.slice(i, i + CONCURRENCY);
+                    await Promise.all(batch.map(url =>
+                        window.electronAPI.cache.save(url, extensionId, mangaId, chapterId)
+                            .catch(e => console.error('Failed to cache page:', url, e))
+                    ));
+                    // Small delay between batches to be polite
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+            };
+            processPages();
+
             set((state) => {
                 const newCache = new Map(state.prefetchedChapters);
                 newCache.set(chapterId, pages);

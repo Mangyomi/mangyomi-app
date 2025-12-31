@@ -67,4 +67,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
         createDumpLog: (consoleLogs: string, networkActivity: string) =>
             ipcRenderer.invoke('app:createDumpLog', consoleLogs, networkActivity),
     },
+
+    cache: {
+        save: (url: string, extensionId: string, mangaId: string, chapterId: string) =>
+            ipcRenderer.invoke('cache:save', url, extensionId, mangaId, chapterId),
+        clear: (mangaId?: string) => ipcRenderer.invoke('cache:clear', mangaId),
+        setLimit: (bytes: number) => ipcRenderer.invoke('cache:setLimit', bytes),
+        getSize: () => ipcRenderer.invoke('cache:getSize') as Promise<number>
+    },
 });

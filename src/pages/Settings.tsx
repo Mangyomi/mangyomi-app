@@ -1,15 +1,30 @@
+import { useState, useEffect } from 'react';
 import { useSettingsStore, Theme, ReaderMode } from '../stores/settingsStore';
+import { useDialog } from '../components/ConfirmModal/DialogContext';
 import './Settings.css';
 
 function Settings() {
+    const [cacheSize, setCacheSize] = useState<number>(0);
+    const dialog = useDialog();
+
+    useEffect(() => {
+        window.electronAPI.cache.getSize().then(setCacheSize);
+    }, []);
     const {
         theme,
         defaultReaderMode,
         prefetchChapters,
+        maxCacheSize,
         setTheme,
         setDefaultReaderMode,
         setPrefetchChapters,
+        setMaxCacheSize,
     } = useSettingsStore();
+
+    const formatSize = (bytes: number) => {
+        if (bytes >= 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB`;
+        return `${Math.round(bytes / 1024 / 1024)} MB`;
+    };
 
     const themes: { value: Theme; label: string; icon: string }[] = [
         { value: 'light', label: 'Light', icon: '☀️' },
@@ -116,6 +131,69 @@ function Settings() {
                         </div>
                     </div>
 
+                    <div className="setting-item">
+                        <div className="setting-info">
+                            <label className="setting-label">Max Cache Size</label>
+                            <span className="setting-description">
+                                Limit the disk space used for offline images.
+                                Currently set to <strong>{formatSize(maxCacheSize || 1024 * 1024 * 1024)}</strong>.
+                            </span>
+                        </div>
+                        <div className="setting-control">
+                            <div className="slider-control">
+                                <input
+                                    type="range"
+                                    min={256 * 1024 * 1024}
+                                    max={8 * 1024 * 1024 * 1024}
+                                    step={256 * 1024 * 1024}
+                                    value={maxCacheSize || 1024 * 1024 * 1024}
+                                    onChange={(e) => setMaxCacheSize(parseInt(e.target.value, 10))}
+                                    className="slider"
+                                />
+                                <div className="slider-labels">
+                                    <span>256MB</span>
+                                    <span>4GB</span>
+                                    <span>8GB</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="setting-item align-end">
+                        <div className="setting-info">
+                            <label className="setting-label">Clear Cache</label>
+                            <span className="setting-description">
+                                Current cache size: <strong>{formatSize(cacheSize)}</strong>.
+                                Clears all cached images and browser data.
+                            </span>
+                        </div>
+                        <div className="setting-control">
+                            <button
+                                className="action-btn"
+                                style={{ backgroundColor: '#dc2626', color: 'white' }}
+                                onClick={async () => {
+                                    const confirmed = await dialog.confirm({
+                                        title: 'Clear Cache',
+                                        message: 'Are you sure you want to delete all cached data?',
+                                        confirmLabel: 'Clear',
+                                        isDestructive: true,
+                                    });
+                                    if (confirmed) {
+                                        try {
+                                            await window.electronAPI.cache.clear();
+                                            setCacheSize(0);
+                                            await dialog.alert('Cache cleared successfully!', 'Success');
+                                        } catch (err) {
+                                            await dialog.alert('Failed to clear cache.', 'Error');
+                                        }
+                                    }
+                                }}
+                            >
+                                🗑️ Clear Cache
+                            </button>
+                        </div>
+                    </div>
+
                     {prefetchChapters > 0 && (
                         <div className="setting-note">
                             <span className="note-icon">💡</span>
@@ -145,10 +223,10 @@ function Settings() {
                                         const networkActivity = debugLogger.getFormattedNetwork();
                                         const result = await window.electronAPI.app.createDumpLog(consoleLogs, networkActivity);
                                         if (result.success) {
-                                            alert('Debug log created and opened in file explorer!');
+                                            await dialog.alert('Debug log created and opened in file explorer!', 'Success');
                                         }
                                     } catch (err) {
-                                        alert('Failed to create debug log: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                                        await dialog.alert('Failed to create debug log: ' + (err instanceof Error ? err.message : 'Unknown error'), 'Error');
                                     }
                                 }}
                             >
@@ -163,3 +241,4 @@ function Settings() {
 }
 
 export default Settings;
+

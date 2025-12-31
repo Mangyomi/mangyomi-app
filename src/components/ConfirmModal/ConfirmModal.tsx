@@ -10,6 +10,7 @@ interface ConfirmModalProps {
     onConfirm: () => void;
     onCancel: () => void;
     isDestructive?: boolean;
+    isAlert?: boolean;
 }
 
 function ConfirmModal({
@@ -21,6 +22,7 @@ function ConfirmModal({
     onConfirm,
     onCancel,
     isDestructive = false,
+    isAlert = false,
 }: ConfirmModalProps) {
     const confirmButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -57,9 +59,11 @@ function ConfirmModal({
                     <p className="confirm-message">{message}</p>
                 </div>
                 <div className="confirm-actions">
-                    <button className="btn btn-secondary" onClick={onCancel}>
-                        {cancelLabel}
-                    </button>
+                    {!isAlert && (
+                        <button className="btn btn-secondary" onClick={onCancel}>
+                            {cancelLabel}
+                        </button>
+                    )}
                     <button
                         ref={confirmButtonRef}
                         className={`btn ${isDestructive ? 'btn-primary' : 'btn-primary'}`}

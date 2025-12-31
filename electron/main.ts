@@ -58,6 +58,8 @@ console.info = (...args) => { captureLog('INFO', args); originalConsole.info(...
 console.warn = (...args) => { captureLog('WARN', args); originalConsole.warn(...args); };
 console.error = (...args) => { captureLog('ERROR', args); originalConsole.error(...args); };
 
+import { imageCache } from './cache/imageCache';
+
 // Test log to verify capture is working
 console.log('[Mangyomi] Debug log capture initialized');
 
@@ -201,6 +203,12 @@ function setupImageProxy() {
         };
 
         try {
+            // 1. Check Cache First
+            const cachedPath = imageCache.getCachedImagePath(imageUrl);
+            if (cachedPath) {
+                return net.fetch(`file://${cachedPath}`);
+            }
+
             const headers: Record<string, string> = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             };
@@ -576,6 +584,35 @@ function setupIpcHandlers(extensionsPath: string) {
         return result;
     });
 
+    ipcMain.handle('cache:save', async (_, url: string, extensionId: string, mangaId: string, chapterId: string) => {
+        const ext = getExtension(extensionId);
+        const headers: Record<string, string> = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        };
+        if (ext) {
+            Object.assign(headers, ext.getImageHeaders());
+        }
+
+        try {
+            return await imageCache.saveToCache(url, headers, mangaId, chapterId);
+        } catch (e) {
+            console.error(`Cache save failed for ${url}:`, e);
+            throw e;
+        }
+    });
+
+    ipcMain.handle('cache:clear', async (_, mangaId?: string) => {
+        await imageCache.clearCache(mangaId);
+    });
+
+    ipcMain.handle('cache:setLimit', async (_, bytes: number) => {
+        imageCache.setLimit(bytes);
+    });
+
+    ipcMain.handle('cache:getSize', async () => {
+        return imageCache.getCacheSize();
+    });
+
     ipcMain.handle('app:createDumpLog', async (_, consoleLogs: string, networkActivity: string) => {
         const os = await import('os');
         const fs = await import('fs');
@@ -664,10 +701,7 @@ app.whenReady().then(async () => {
     const dbPath = path.join(app.getPath('userData'), 'mangyomi.db');
     await initDatabase(dbPath);
 
-    const isDev = process.env.NODE_ENV === 'development' || process.env.VITE_DEV_SERVER_URL;
-    const extensionsPath = isDev
-        ? path.join(__dirname, '../extensions')
-        : path.join(app.getPath('userData'), 'extensions');
+    const extensionsPath = path.join(app.getPath('userData'), 'extensions');
 
     await loadExtensions(extensionsPath);
 
