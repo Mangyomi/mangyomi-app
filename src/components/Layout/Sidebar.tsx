@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { useAppStore } from '../../stores/appStore';
 import { Logo } from '../Logo';
 import './Sidebar.css';
+import packageJson from '../../../package.json';
 
 // SVG Icons
 const Icons = {
@@ -175,7 +176,7 @@ function Sidebar() {
             </nav>
 
             <div className="sidebar-footer">
-                {!isCollapsed && <div className="version">v1.0.0</div>}
+                {!isCollapsed && <div className="version">v{packageJson.version}</div>}
             </div>
 
             <div
