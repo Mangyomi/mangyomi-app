@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -28,7 +31,7 @@ jobs:
         run: npm ci
 
       - name: Build Electron app
-        run: npm run electron:build
+        run: npx electron-builder --win --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -36,25 +39,26 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-${{ matrix.os }}
-          path: release/*.exe
+          path: |
+            release/*.exe
+            release/*.blockmap
           if-no-files-found: error
 
   release:
     needs: build
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          merge-multiple: true
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          files: artifacts/**/*
+          files: artifacts/*
           generate_release_notes: true
           draft: false
         env:
