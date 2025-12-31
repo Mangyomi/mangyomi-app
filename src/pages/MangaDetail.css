@@ -124,6 +124,12 @@
     margin-top: var(--spacing-md);
 }
 
+.btn-anilist-linked {
+    background: rgba(2, 169, 255, 0.2) !important;
+    border-color: #02a9ff !important;
+    color: #02a9ff !important;
+}
+
 /* Sections */
 .manga-section {
     margin-bottom: var(--spacing-xl);

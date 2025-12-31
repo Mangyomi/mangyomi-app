@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { useAppStore } from './stores/appStore';
 import { useSettingsStore } from './stores/settingsStore';
+import { useAniListStore } from './stores/anilistStore';
 import Sidebar from './components/Layout/Sidebar';
 import CaptchaModal from './components/CaptchaModal';
 import { DialogProvider } from './components/ConfirmModal/DialogContext';
@@ -28,10 +29,12 @@ function App() {
     } = useAppStore();
 
     const { loadSettings } = useSettingsStore();
+    const { loadFromStorage: loadAniListFromStorage } = useAniListStore();
 
     useEffect(() => {
         // Initialize app data
         loadSettings();
+        loadAniListFromStorage();
         loadExtensions();
         loadLibrary();
         loadTags();

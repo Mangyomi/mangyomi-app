@@ -10,15 +10,23 @@ interface MangaCardProps {
     inLibrary?: boolean;
     totalChapters?: number;
     readChapters?: number;
+    onContextMenu?: (e: React.MouseEvent, manga: { id: string; title: string; extensionId: string }) => void;
 }
 
-function MangaCard({ id, title, coverUrl, extensionId, index = 0, inLibrary, totalChapters, readChapters }: MangaCardProps) {
+function MangaCard({ id, title, coverUrl, extensionId, index = 0, inLibrary, totalChapters, readChapters, onContextMenu }: MangaCardProps) {
     const navigate = useNavigate();
 
     const isFullyRead = inLibrary && totalChapters !== undefined && totalChapters > 0 && readChapters === totalChapters;
 
     const handleClick = () => {
         navigate(`/manga/${extensionId}/${encodeURIComponent(id)}`);
+    };
+
+    const handleContextMenu = (e: React.MouseEvent) => {
+        e.preventDefault();
+        if (onContextMenu) {
+            onContextMenu(e, { id, title, extensionId });
+        }
     };
 
     // Use proxied URL for images
@@ -30,6 +38,7 @@ function MangaCard({ id, title, coverUrl, extensionId, index = 0, inLibrary, tot
         <div
             className={`manga-card ${isFullyRead ? 'fully-read' : ''}`}
             onClick={handleClick}
+            onContextMenu={handleContextMenu}
             style={{ '--index': index } as React.CSSProperties}
         >
             <div className="manga-card-cover">
@@ -56,3 +65,4 @@ function MangaCard({ id, title, coverUrl, extensionId, index = 0, inLibrary, tot
 }
 
 export default MangaCard;
+

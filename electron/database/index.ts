@@ -20,26 +20,17 @@ class StatementWrapper {
     }
 
     run(...params: any[]): RunResult {
-        // sql.js bind takes array or object.
-        // If params is [obj], use obj. If params is variables, use array.
-        // better-sqlite3: stmt.run(a, b) or stmt.run({a:1, b:2})
-
         let bindParams = params;
         if (params.length === 1 && typeof params[0] === 'object' && params[0] !== null) {
             bindParams = params[0];
         }
 
         this.stmt.run(bindParams);
-
-        // sql.js doesn't give run stats easily for prepared statements in the same way,
-        // but we can try to get modified rows if needed. 
-        // For now, request a save.
         this.dbWrapper.scheduleSave();
 
-        // Mock result - sql.js limitations
         return {
             changes: 1,
-            lastInsertRowid: -1 // TODO: fetch this if critical (e.g. SELECT last_insert_rowid())
+            lastInsertRowid: -1
         };
     }
 
@@ -48,11 +39,6 @@ class StatementWrapper {
         if (params.length === 1 && typeof params[0] === 'object' && params[0] !== null) {
             bindParams = params[0];
         }
-
-        // Reset statement is important in sql.js before re-binding if previously used?
-        // this.stmt.reset(); // (Automatically handled by bind in many cases, but safe to do implicit reset logic if needed)
-        // sql.js 'getAsObject' convenience? 
-        // The stmt object has .getAsObject(params)
 
         this.stmt.bind(bindParams);
         if (this.stmt.step()) {
@@ -123,24 +109,23 @@ class DatabaseWrapper {
     }
 
     close() {
-        // Force synchronous save on close
         this.saveSync();
         this.db.close();
     }
 
-    // Schedule a debounced async save
+    // Schedule a debounced async save - reduced delay for safety
     scheduleSave() {
         if (this.saveTimeout) {
             clearTimeout(this.saveTimeout);
         }
 
-        // Debounce for 2 seconds
+        // Reduced debounce to 500ms for faster saves
         this.saveTimeout = setTimeout(() => {
             this.saveAsync();
-        }, 2000);
+        }, 500);
     }
 
-    // Async save with atomic write (write to temp then rename)
+    // Async save with atomic write and validation
     async saveAsync() {
         if (this.isSaving) {
             this.pendingSave = true;
@@ -152,12 +137,27 @@ class DatabaseWrapper {
         try {
             const data = this.db.export();
             const buffer = Buffer.from(data);
+
+            // Validate the data looks like a valid SQLite database before saving
+            const header = buffer.slice(0, 16).toString('utf8');
+            if (!header.startsWith('SQLite format 3')) {
+                console.error('Database export validation failed - refusing to save corrupt data');
+                return;
+            }
+
             const tempPath = `${this.dbPath}.tmp`;
 
             await fs.promises.writeFile(tempPath, buffer);
+
+            // Verify temp file was written correctly before replacing
+            const writtenBuffer = await fs.promises.readFile(tempPath);
+            if (writtenBuffer.length !== buffer.length) {
+                console.error('Database save verification failed - file size mismatch');
+                return;
+            }
+
             await fs.promises.rename(tempPath, this.dbPath);
 
-            // console.log('Database saved asynchronously');
         } catch (err) {
             console.error('Failed to save database async:', err);
         } finally {
@@ -179,6 +179,14 @@ class DatabaseWrapper {
         try {
             const data = this.db.export();
             const buffer = Buffer.from(data);
+
+            // Validate the data looks like a valid SQLite database before saving
+            const header = buffer.slice(0, 16).toString('utf8');
+            if (!header.startsWith('SQLite format 3')) {
+                console.error('Database export validation failed - refusing to save corrupt data');
+                return;
+            }
+
             const tempPath = `${this.dbPath}.tmp`;
 
             fs.writeFileSync(tempPath, buffer);
@@ -193,10 +201,6 @@ class DatabaseWrapper {
 let dbWrapper: DatabaseWrapper | null = null;
 
 export async function initDatabase(dbPath: string): Promise<DatabaseWrapper> {
-    // Determine WASM path (needs to be available in build)
-    // In dev: node_modules/sql.js/dist/sql-wasm.wasm
-    // In prod: bundled via Vite
-
     const SQL = await initSqlJs();
 
     let buffer: Buffer | undefined;
@@ -220,6 +224,29 @@ export async function initDatabase(dbPath: string): Promise<DatabaseWrapper> {
 
     if (fs.existsSync(dbPath)) {
         buffer = fs.readFileSync(dbPath);
+
+        // Validate the loaded database
+        const header = buffer.slice(0, 16).toString('utf8');
+        if (!header.startsWith('SQLite format 3')) {
+            console.error('Database file is corrupted (invalid header). Creating new database.');
+            // Create backup of corrupted file for investigation
+            const corruptBackup = `${dbPath}.corrupt.${Date.now()}`;
+            try {
+                fs.copyFileSync(dbPath, corruptBackup);
+                console.log('Corrupted database backed up to:', corruptBackup);
+            } catch (e) {
+                console.error('Failed to backup corrupted database:', e);
+            }
+            buffer = undefined; // Will create fresh database
+        } else {
+            // Create a backup of the working database
+            const backupPath = `${dbPath}.backup`;
+            try {
+                fs.copyFileSync(dbPath, backupPath);
+            } catch (e) {
+                console.error('Failed to create database backup:', e);
+            }
+        }
     }
 
     const db = new SQL.Database(buffer);
@@ -241,7 +268,6 @@ export async function initDatabase(dbPath: string): Promise<DatabaseWrapper> {
         if (!hasInLibrary) {
             console.log('Migrating database: adding in_library column to manga table');
             dbWrapper.exec('ALTER TABLE manga ADD COLUMN in_library INTEGER DEFAULT 0');
-            // Set all existing manga to be in library (restore previous behavior)
             dbWrapper.exec('UPDATE manga SET in_library = 1');
         }
     } catch (error) {
@@ -269,6 +295,19 @@ export async function initDatabase(dbPath: string): Promise<DatabaseWrapper> {
         console.error('Image Cache Migration failed:', error);
     }
 
+    // Migration: Add anilist_id column if it doesn't exist
+    try {
+        const tableInfo = dbWrapper.prepare("PRAGMA table_info(manga)").all();
+        const hasAnilistId = tableInfo.some((col: any) => col.name === 'anilist_id');
+
+        if (!hasAnilistId) {
+            console.log('Migrating database: adding anilist_id column to manga table');
+            dbWrapper.exec('ALTER TABLE manga ADD COLUMN anilist_id INTEGER');
+        }
+    } catch (error) {
+        console.error('AniList migration failed:', error);
+    }
+
     console.log('Database initialized at:', dbPath);
     return dbWrapper;
 }
@@ -286,4 +325,3 @@ export function closeDatabase(): void {
         dbWrapper = null;
     }
 }
-

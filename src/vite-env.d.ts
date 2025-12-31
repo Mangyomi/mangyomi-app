@@ -75,6 +75,21 @@ interface Window {
             setLimit: (bytes: number) => Promise<void>;
             getSize: () => Promise<number>;
         };
+        anilist: {
+            login: () => Promise<{ success: boolean; token?: string; error?: string }>;
+            logout: () => Promise<{ success: boolean }>;
+            isAuthenticated: () => Promise<boolean>;
+            getUser: () => Promise<any>;
+            setClientId: (clientId: string) => Promise<void>;
+            searchManga: (query: string) => Promise<any[]>;
+            getMangaById: (anilistId: number) => Promise<any>;
+            linkManga: (mangaId: string, anilistId: number) => Promise<{ success: boolean }>;
+            unlinkManga: (mangaId: string) => Promise<{ success: boolean }>;
+            updateProgress: (anilistId: number, progress: number) => Promise<{ success: boolean; data?: any; error?: string }>;
+            syncProgress: (mangaId: string) => Promise<{ success: boolean; data?: any; error?: string }>;
+            getTokenData: () => Promise<string | null>;
+            setTokenData: (data: string) => Promise<void>;
+        };
         getProxiedImageUrl: (url: string, extensionId: string) => string;
     };
 }

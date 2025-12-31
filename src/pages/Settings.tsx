@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSettingsStore, Theme, ReaderMode } from '../stores/settingsStore';
+import { useAniListStore } from '../stores/anilistStore';
 import { useDialog } from '../components/ConfirmModal/DialogContext';
 import './Settings.css';
 
@@ -9,6 +10,20 @@ function Settings() {
 
     useEffect(() => {
         window.electronAPI.cache.getSize().then(setCacheSize);
+    }, []);
+
+    // AniList store
+    const {
+        isAuthenticated: isAniListAuthenticated,
+        user: anilistUser,
+        isLoading: anilistLoading,
+        login: anilistLogin,
+        logout: anilistLogout,
+        loadFromStorage: loadAnilistFromStorage,
+    } = useAniListStore();
+
+    useEffect(() => {
+        loadAnilistFromStorage();
     }, []);
     const {
         theme,
@@ -188,6 +203,57 @@ function Settings() {
                                     <span className="checkbox-slider"></span>
                                 </label>
                             </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Tracking Section */}
+                <section className="settings-section">
+                    <h2 className="section-title">Tracking</h2>
+
+                    <div className="setting-item">
+                        <div className="setting-info">
+                            <label className="setting-label">AniList</label>
+                            <span className="setting-description">
+                                {isAniListAuthenticated && anilistUser
+                                    ? `Connected as ${anilistUser.name}`
+                                    : 'Sync your reading progress with AniList'}
+                            </span>
+                        </div>
+                        <div className="setting-control">
+                            {isAniListAuthenticated ? (
+                                <div className="anilist-user-info">
+                                    {anilistUser?.avatar?.medium && (
+                                        <img
+                                            src={anilistUser.avatar.medium}
+                                            alt={anilistUser.name}
+                                            className="anilist-avatar"
+                                        />
+                                    )}
+                                    <button
+                                        className="action-btn logout-btn"
+                                        onClick={async () => {
+                                            const confirmed = await dialog.confirm({
+                                                title: 'Disconnect AniList?',
+                                                message: 'Your tracking links will be preserved but progress will no longer sync.'
+                                            });
+                                            if (confirmed) {
+                                                await anilistLogout();
+                                            }
+                                        }}
+                                    >
+                                        Disconnect
+                                    </button>
+                                </div>
+                            ) : (
+                                <button
+                                    className="action-btn"
+                                    onClick={anilistLogin}
+                                    disabled={anilistLoading}
+                                >
+                                    {anilistLoading ? 'Connecting...' : 'Connect'}
+                                </button>
+                            )}
                         </div>
                     </div>
                 </section>

@@ -15,6 +15,7 @@ export interface Manga {
     in_library?: boolean;
     total_chapters?: number;
     read_chapters?: number;
+    anilist_id?: number;
 }
 
 export interface Chapter {
@@ -90,6 +91,7 @@ interface AppState {
     captchaCallback: (() => void) | null;
 
     prefetchedChapters: Map<string, string[]>;
+    prefetchInProgress: Set<string>;
 
     loadLibrary: () => Promise<void>;
     loadExtensions: () => Promise<void>;
@@ -119,7 +121,7 @@ interface AppState {
     markChapterReadInternal: (chapterId: string, pageNumber?: number) => Promise<void>;
     showCaptcha: (url: string, callback: () => void) => void;
     hideCaptcha: () => void;
-    prefetchChapter: (extensionId: string, chapterId: string) => Promise<void>;
+    prefetchChapter: (extensionId: string, chapterId: string) => void;
     getPrefetchedPages: (chapterId: string) => string[] | undefined;
     clearPrefetchCache: () => void;
 }
@@ -145,6 +147,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     captchaUrl: null,
     captchaCallback: null,
     prefetchedChapters: new Map(),
+    prefetchInProgress: new Set(),
 
     loadLibrary: async () => {
         set({ loadingLibrary: true });
@@ -590,42 +593,56 @@ export const useAppStore = create<AppState>((set, get) => ({
         set({ captchaUrl: null, captchaCallback: null });
     },
 
-    prefetchChapter: async (extensionId, chapterId) => {
-        if (get().prefetchedChapters.has(chapterId)) {
+    prefetchChapter: (extensionId, chapterId) => {
+        // Already cached or in progress - skip
+        if (get().prefetchedChapters.has(chapterId) || get().prefetchInProgress.has(chapterId)) {
             return;
         }
 
-        try {
-            console.log('Prefetching chapter:', chapterId);
-            const pages = await window.electronAPI.extensions.getChapterPages(extensionId, chapterId);
+        // Mark as in progress immediately (synchronous)
+        set((state) => ({
+            prefetchInProgress: new Set(state.prefetchInProgress).add(chapterId)
+        }));
 
-            // Trigger offline caching
-            const { currentManga } = get();
-            const mangaId = currentManga?.id || 'unknown';
+        // Fire-and-forget async operation
+        (async () => {
+            try {
+                console.log('Prefetching chapter:', chapterId);
+                const pages = await window.electronAPI.extensions.getChapterPages(extensionId, chapterId);
 
-            // Download in background with throttling (3 concurrent requests) from current store state
-            const processPages = async () => {
-                const CONCURRENCY = 3;
+                // Store pages immediately
+                set((state) => {
+                    const newCache = new Map(state.prefetchedChapters);
+                    newCache.set(chapterId, pages);
+                    const newInProgress = new Set(state.prefetchInProgress);
+                    newInProgress.delete(chapterId);
+                    return { prefetchedChapters: newCache, prefetchInProgress: newInProgress };
+                });
+
+                // Background caching (fully async, no blocking)
+                const { currentManga } = get();
+                const mangaId = currentManga?.id || 'unknown';
+
+                const CONCURRENCY = 2;
                 for (let i = 0; i < pages.length; i += CONCURRENCY) {
                     const batch = pages.slice(i, i + CONCURRENCY);
                     await Promise.all(batch.map(url =>
                         window.electronAPI.cache.save(url, extensionId, mangaId, chapterId)
                             .catch(e => console.error('Failed to cache page:', url, e))
                     ));
-                    // Small delay between batches to be polite
-                    await new Promise(resolve => setTimeout(resolve, 500));
+                    // Longer delay between batches to reduce CPU load
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                 }
-            };
-            processPages();
-
-            set((state) => {
-                const newCache = new Map(state.prefetchedChapters);
-                newCache.set(chapterId, pages);
-                return { prefetchedChapters: newCache };
-            });
-        } catch (error) {
-            console.error('Failed to prefetch chapter:', chapterId, error);
-        }
+            } catch (error) {
+                console.error('Failed to prefetch chapter:', chapterId, error);
+                // Remove from in-progress on error
+                set((state) => {
+                    const newInProgress = new Set(state.prefetchInProgress);
+                    newInProgress.delete(chapterId);
+                    return { prefetchInProgress: newInProgress };
+                });
+            }
+        })();
     },
 
     getPrefetchedPages: (chapterId) => {

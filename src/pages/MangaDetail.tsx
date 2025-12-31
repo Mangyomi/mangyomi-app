@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../stores/appStore';
+import { useAniListStore } from '../stores/anilistStore';
 import { useDialog } from '../components/ConfirmModal/DialogContext';
 import './MangaDetail.css';
 
 import TagSelector from '../components/TagSelector';
+import AniListLinkModal from '../components/AniListLinkModal/AniListLinkModal';
 
 function MangaDetail() {
     const { extensionId, mangaId } = useParams<{ extensionId: string; mangaId: string }>();
@@ -24,6 +26,10 @@ function MangaDetail() {
     const [error, setError] = useState<string | null>(null);
     const [isTagSelectorOpen, setIsTagSelectorOpen] = useState(false);
     const [mangaTags, setMangaTags] = useState<any[]>([]);
+    const [isAniListModalOpen, setIsAniListModalOpen] = useState(false);
+    const [anilistId, setAnilistId] = useState<number | null>(null);
+
+    const { isAuthenticated: isAniListAuthenticated, syncProgress } = useAniListStore();
 
     const decodedMangaId = decodeURIComponent(mangaId || '');
     const libraryEntry = library.find(
@@ -47,6 +53,15 @@ function MangaDetail() {
     useEffect(() => {
         fetchTags();
     }, [libraryEntry, isTagSelectorOpen]);
+
+    // Load anilist_id from library entry
+    useEffect(() => {
+        if (libraryEntry?.anilist_id) {
+            setAnilistId(libraryEntry.anilist_id);
+        } else {
+            setAnilistId(null);
+        }
+    }, [libraryEntry]);
 
     const handleRefresh = async () => {
         if (!extensionId || !mangaId) return;
@@ -242,6 +257,13 @@ function MangaDetail() {
                                     <button className="btn btn-secondary" onClick={() => setIsTagSelectorOpen(true)}>
                                         🏷 Tags
                                     </button>
+                                    <button
+                                        className={`btn ${anilistId ? 'btn-anilist-linked' : 'btn-secondary'}`}
+                                        onClick={() => setIsAniListModalOpen(true)}
+                                        title={anilistId ? `Linked to AniList (ID: ${anilistId})` : 'Track on AniList'}
+                                    >
+                                        📊 {anilistId ? 'Tracking' : 'Track'}
+                                    </button>
                                 </>
                             ) : (
                                 <button className="btn btn-primary" onClick={handleAddToLibrary}>
@@ -261,22 +283,26 @@ function MangaDetail() {
                 </div>
             </div>
 
-            {isTagSelectorOpen && libraryEntry && (
-                <TagSelector
-                    mangaId={libraryEntry.id}
-                    onClose={() => setIsTagSelectorOpen(false)}
-                />
-            )}
+            {
+                isTagSelectorOpen && libraryEntry && (
+                    <TagSelector
+                        mangaId={libraryEntry.id}
+                        onClose={() => setIsTagSelectorOpen(false)}
+                    />
+                )
+            }
 
             {/* Description - only show if available */}
-            {currentManga.description && (
-                <div className="manga-section">
-                    <h2 className="section-title">Description</h2>
-                    <p className="manga-description">
-                        {currentManga.description}
-                    </p>
-                </div>
-            )}
+            {
+                currentManga.description && (
+                    <div className="manga-section">
+                        <h2 className="section-title">Description</h2>
+                        <p className="manga-description">
+                            {currentManga.description}
+                        </p>
+                    </div>
+                )
+            }
 
             <div className="manga-section">
                 <div className="section-header">
@@ -318,7 +344,14 @@ function MangaDetail() {
                             </div>
                             {chapter.uploadDate && (
                                 <span className="chapter-date">
-                                    {new Date(chapter.uploadDate).toLocaleDateString()}
+                                    {(() => {
+                                        const date = new Date(chapter.uploadDate);
+                                        // Fix for extensions that parse MM/DD without year (defaults to 2001)
+                                        if (date.getFullYear() < 2010) {
+                                            date.setFullYear(new Date().getFullYear());
+                                        }
+                                        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                                    })()}
                                 </span>
                             )}
 
@@ -366,7 +399,23 @@ function MangaDetail() {
                     ))}
                 </div>
             </div>
-        </div>
+
+            <AniListLinkModal
+                isOpen={isAniListModalOpen}
+                mangaTitle={currentManga?.title || ''}
+                mangaId={libraryEntry?.id || ''}
+                currentAnilistId={anilistId}
+                onClose={() => setIsAniListModalOpen(false)}
+                onLinked={(id) => {
+                    setAnilistId(id);
+                    // Sync progress immediately after linking
+                    if (libraryEntry?.id && isAniListAuthenticated) {
+                        syncProgress(libraryEntry.id);
+                    }
+                }}
+                onUnlinked={() => setAnilistId(null)}
+            />
+        </div >
     );
 }
 

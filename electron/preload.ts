@@ -75,4 +75,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
         setLimit: (bytes: number) => ipcRenderer.invoke('cache:setLimit', bytes),
         getSize: () => ipcRenderer.invoke('cache:getSize') as Promise<number>
     },
+
+    anilist: {
+        login: () => ipcRenderer.invoke('anilist:login'),
+        logout: () => ipcRenderer.invoke('anilist:logout'),
+        isAuthenticated: () => ipcRenderer.invoke('anilist:isAuthenticated') as Promise<boolean>,
+        getUser: () => ipcRenderer.invoke('anilist:getUser'),
+        setClientId: (clientId: string) => ipcRenderer.invoke('anilist:setClientId', clientId),
+        searchManga: (query: string) => ipcRenderer.invoke('anilist:searchManga', query),
+        getMangaById: (anilistId: number) => ipcRenderer.invoke('anilist:getMangaById', anilistId),
+        linkManga: (mangaId: string, anilistId: number) =>
+            ipcRenderer.invoke('anilist:linkManga', mangaId, anilistId),
+        unlinkManga: (mangaId: string) => ipcRenderer.invoke('anilist:unlinkManga', mangaId),
+        updateProgress: (anilistId: number, progress: number) =>
+            ipcRenderer.invoke('anilist:updateProgress', anilistId, progress),
+        syncProgress: (mangaId: string) => ipcRenderer.invoke('anilist:syncProgress', mangaId),
+        getTokenData: () => ipcRenderer.invoke('anilist:getTokenData'),
+        setTokenData: (data: string) => ipcRenderer.invoke('anilist:setTokenData', data),
+    },
 });

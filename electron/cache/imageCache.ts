@@ -1,4 +1,4 @@
-import { app, net } from 'electron';
+import { app, net, nativeImage } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
@@ -6,17 +6,23 @@ import { getDatabase } from '../database';
 
 class ImageCache {
     private cacheDir: string;
+    private coverCacheDir: string;
     private initialized: boolean = false;
     private maxCacheSize: number = 1024 * 1024 * 1024; // Default 1GB
     private isPruning: boolean = false;
+    private coverTTL: number = 24 * 60 * 60; // 24 hours in seconds
 
     constructor() {
         this.cacheDir = path.join(app.getPath('userData'), 'cache', 'images');
+        this.coverCacheDir = path.join(app.getPath('userData'), 'cache', 'covers');
     }
 
     init() {
         if (!fs.existsSync(this.cacheDir)) {
             fs.mkdirSync(this.cacheDir, { recursive: true });
+        }
+        if (!fs.existsSync(this.coverCacheDir)) {
+            fs.mkdirSync(this.coverCacheDir, { recursive: true });
         }
         this.initialized = true;
     }
@@ -61,6 +67,84 @@ class ImageCache {
             return filePath;
         }
         return null;
+    }
+
+    // Cover caching with TTL
+    getCachedCoverPath(url: string): string | null {
+        if (!this.initialized) this.init();
+
+        const hash = crypto.createHash('sha256').update(url).digest('hex');
+        const metaPath = path.join(this.coverCacheDir, `${hash}.meta`);
+
+        if (fs.existsSync(metaPath)) {
+            try {
+                const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+                const now = Math.floor(Date.now() / 1000);
+
+                // Check if TTL has expired
+                if (meta.cachedAt + this.coverTTL > now) {
+                    // Use stored filePath or fallback to .jpg
+                    const filePath = meta.filePath || path.join(this.coverCacheDir, `${hash}.jpg`);
+                    if (fs.existsSync(filePath)) {
+                        return filePath; // Still valid
+                    }
+                }
+                // Expired or file missing - cleanup
+                try { fs.unlinkSync(metaPath); } catch (e) { }
+                try { fs.unlinkSync(path.join(this.coverCacheDir, `${hash}.jpg`)); } catch (e) { }
+                try { fs.unlinkSync(path.join(this.coverCacheDir, hash)); } catch (e) { }
+            } catch (e) {
+                // Invalid meta
+                try { fs.unlinkSync(metaPath); } catch (e) { }
+            }
+        }
+        return null;
+    }
+
+    async saveCover(url: string, headers: Record<string, string>): Promise<string> {
+        if (!this.initialized) this.init();
+
+        const hash = crypto.createHash('sha256').update(url).digest('hex');
+        const metaPath = path.join(this.coverCacheDir, `${hash}.meta`);
+
+        try {
+            const response = await net.fetch(url, { headers });
+            if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+
+            const buffer = await response.arrayBuffer();
+            const originalData = Buffer.from(buffer);
+
+            // Try to compress to 75% quality JPEG
+            let filePath = path.join(this.coverCacheDir, `${hash}.jpg`);
+            let dataToSave: Buffer | Uint8Array = originalData;
+
+            try {
+                const image = nativeImage.createFromBuffer(originalData);
+                if (!image.isEmpty()) {
+                    const compressedData = image.toJPEG(75);
+                    if (compressedData.length > 0) {
+                        dataToSave = compressedData;
+                    }
+                }
+            } catch (compressError) {
+                // Compression failed, use original
+                console.log('Cover compression failed, using original:', url);
+                // Keep original extension for non-JPEG compatible formats
+                filePath = path.join(this.coverCacheDir, hash);
+            }
+
+            await fs.promises.writeFile(filePath, dataToSave);
+            await fs.promises.writeFile(metaPath, JSON.stringify({
+                url,
+                filePath, // Store actual path used
+                cachedAt: Math.floor(Date.now() / 1000)
+            }));
+
+            return filePath;
+        } catch (error) {
+            console.error('Failed to cache cover:', url, error);
+            throw error;
+        }
     }
 
     private async prune() {

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { initDatabase, getDatabase } from './database';
 import { loadExtensions, getExtension, getAllExtensions, reloadExtensions } from './extensions/loader';
 import { listAvailableExtensions, installExtension, uninstallExtension, isExtensionInstalled } from './extensions/installer';
+import { anilistAPI, setClientId, openAuthWindow, logout, isAuthenticated, serializeTokenData, deserializeTokenData } from './anilist';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -203,7 +204,13 @@ function setupImageProxy() {
         };
 
         try {
-            // 1. Check Cache First
+            // 1. Check cover cache with TTL (for covers)
+            const cachedCoverPath = imageCache.getCachedCoverPath(imageUrl);
+            if (cachedCoverPath) {
+                return net.fetch(`file://${cachedCoverPath}`);
+            }
+
+            // 2. Check chapter page cache (for chapter images)
             const cachedPath = imageCache.getCachedImagePath(imageUrl);
             if (cachedPath) {
                 return net.fetch(`file://${cachedPath}`);
@@ -219,15 +226,21 @@ function setupImageProxy() {
                 Object.assign(headers, extHeaders);
             }
 
-            const response = await net.fetch(imageUrl, {
-                headers,
-            });
-
-            entry.status = response.status;
-            entry.duration = Date.now() - startTime;
-            captureNetworkRequest(entry);
-
-            return response;
+            // 3. Save to cover cache (all proxied images are covers or browse images)
+            try {
+                const filePath = await imageCache.saveCover(imageUrl, headers);
+                entry.status = 200;
+                entry.duration = Date.now() - startTime;
+                captureNetworkRequest(entry);
+                return net.fetch(`file://${filePath}`);
+            } catch (cacheError) {
+                // Fallback to direct fetch if caching fails
+                const response = await net.fetch(imageUrl, { headers });
+                entry.status = response.status;
+                entry.duration = Date.now() - startTime;
+                captureNetworkRequest(entry);
+                return response;
+            }
         } catch (error) {
             entry.error = error instanceof Error ? error.message : 'Unknown error';
             entry.duration = Date.now() - startTime;
@@ -439,17 +452,22 @@ function setupIpcHandlers(extensionsPath: string) {
     });
 
     ipcMain.handle('db:getHistory', async (_, limit: number = 50) => {
+        // Use subquery to get only the most recent chapter per manga
         return db.prepare(`
             SELECT h.*, m.title as manga_title, m.cover_url, m.source_id,
                    c.title as chapter_title, c.chapter_number
             FROM history h
             JOIN manga m ON h.manga_id = m.id
             JOIN chapter c ON h.chapter_id = c.id
-            INNER JOIN (
-                SELECT manga_id, MAX(read_at) as max_read_at
-                FROM history
-                GROUP BY manga_id
-            ) latest ON h.manga_id = latest.manga_id AND h.read_at = latest.max_read_at
+            WHERE h.id IN (
+                SELECT h2.id FROM history h2
+                INNER JOIN (
+                    SELECT manga_id, MAX(read_at) as max_read_at
+                    FROM history
+                    GROUP BY manga_id
+                ) latest ON h2.manga_id = latest.manga_id AND h2.read_at = latest.max_read_at
+                GROUP BY h2.manga_id
+            )
             ORDER BY h.read_at DESC
             LIMIT ?
         `).all(limit);
@@ -694,6 +712,98 @@ ${networkActivity || 'No renderer network activity captured.'}
         shell.showItemInFolder(logPath);
 
         return { success: true, path: logPath };
+    });
+
+    // AniList IPC Handlers
+    ipcMain.handle('anilist:setClientId', async (_, clientId: string) => {
+        setClientId(clientId);
+    });
+
+    ipcMain.handle('anilist:login', async () => {
+        if (!mainWindow) throw new Error('Main window not available');
+        try {
+            const token = await openAuthWindow(mainWindow);
+            return { success: true, token };
+        } catch (error) {
+            return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+        }
+    });
+
+    ipcMain.handle('anilist:logout', async () => {
+        logout();
+        return { success: true };
+    });
+
+    ipcMain.handle('anilist:isAuthenticated', async () => {
+        return isAuthenticated();
+    });
+
+    ipcMain.handle('anilist:getUser', async () => {
+        return await anilistAPI.getViewer();
+    });
+
+    ipcMain.handle('anilist:searchManga', async (_, query: string) => {
+        return await anilistAPI.searchManga(query);
+    });
+
+    ipcMain.handle('anilist:getMangaById', async (_, anilistId: number) => {
+        return await anilistAPI.getMangaById(anilistId);
+    });
+
+    ipcMain.handle('anilist:linkManga', async (_, mangaId: string, anilistId: number) => {
+        db.prepare('UPDATE manga SET anilist_id = ? WHERE id = ?').run(anilistId, mangaId);
+        return { success: true };
+    });
+
+    ipcMain.handle('anilist:unlinkManga', async (_, mangaId: string) => {
+        db.prepare('UPDATE manga SET anilist_id = NULL WHERE id = ?').run(mangaId);
+        return { success: true };
+    });
+
+    ipcMain.handle('anilist:updateProgress', async (_, anilistId: number, progress: number) => {
+        try {
+            const result = await anilistAPI.updateProgress(anilistId, progress);
+            return { success: true, data: result };
+        } catch (error) {
+            return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+        }
+    });
+
+    ipcMain.handle('anilist:syncProgress', async (_, mangaId: string) => {
+        // Get manga with anilist_id
+        const manga = db.prepare('SELECT * FROM manga WHERE id = ?').get(mangaId) as any;
+        if (!manga?.anilist_id) {
+            return { success: false, error: 'Manga not linked to AniList' };
+        }
+
+        // Get highest read chapter number for this manga
+        const highestRead = db.prepare(`
+            SELECT MAX(chapter_number) as max_chapter 
+            FROM chapter 
+            WHERE manga_id = ? AND read_at IS NOT NULL
+        `).get(mangaId) as any;
+
+        if (!highestRead?.max_chapter) {
+            return { success: false, error: 'No chapters read' };
+        }
+
+        try {
+            const result = await anilistAPI.updateProgress(
+                manga.anilist_id,
+                Math.floor(highestRead.max_chapter)
+            );
+            return { success: true, data: result };
+        } catch (error) {
+            return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+        }
+    });
+
+    ipcMain.handle('anilist:getTokenData', async () => {
+        return serializeTokenData();
+    });
+
+    ipcMain.handle('anilist:setTokenData', async (_, data: string) => {
+        deserializeTokenData(data);
     });
 }
 

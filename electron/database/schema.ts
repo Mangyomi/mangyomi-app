@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS manga (
   description TEXT,
   status TEXT,
   in_library INTEGER DEFAULT 0,
+  anilist_id INTEGER,
   added_at INTEGER DEFAULT (strftime('%s', 'now')),
   updated_at INTEGER DEFAULT (strftime('%s', 'now')),
   UNIQUE(source_id, source_manga_id)

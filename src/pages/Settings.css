@@ -300,6 +300,74 @@
     border-bottom: none;
 }
 
+/* AniList Tracking */
+.anilist-user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.anilist-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--accent-color);
+}
+
+.logout-btn {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.logout-btn:hover {
+    background: #ef4444;
+    border-color: #ef4444;
+    color: white;
+}
+
+.client-id-setup {
+    background: var(--bg-tertiary);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 8px;
+}
+
+.client-id-input-group {
+    display: flex;
+    gap: 8px;
+}
+
+.client-id-input {
+    flex: 1;
+    padding: 10px 14px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.client-id-input:focus {
+    border-color: var(--accent-color);
+}
+
+.client-id-input::placeholder {
+    color: var(--text-muted);
+}
+
+.setting-description a {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+.setting-description a:hover {
+    text-decoration: underline;
+}
+
 /* Responsive */
 @media (max-width: 600px) {
     .setting-item {

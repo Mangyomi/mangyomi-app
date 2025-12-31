@@ -1,18 +1,48 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useAppStore } from '../stores/appStore';
+import { useNavigate } from 'react-router-dom';
+import { useAppStore, Manga } from '../stores/appStore';
 import { useSettingsStore } from '../stores/settingsStore';
+import { useDialog } from '../components/ConfirmModal/DialogContext';
 import MangaCard from '../components/MangaCard';
+import CustomDropdown from '../components/CustomDropdown/CustomDropdown';
+import ContextMenu, { ContextMenuItem } from '../components/ContextMenu/ContextMenu';
+import TagSelector from '../components/TagSelector';
 import './Gallery.css';
 
+interface ContextMenuState {
+    visible: boolean;
+    x: number;
+    y: number;
+    manga: { id: string; title: string; extensionId: string } | null;
+}
+
 function Gallery() {
-    const { library, loadingLibrary, tags, extensions } = useAppStore();
+    const { library, loadingLibrary, tags, extensions, removeFromLibrary, loadLibrary } = useAppStore();
     const { hideNsfwInLibrary, hideNsfwInTags, hideNsfwCompletely } = useSettingsStore();
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedTagId, setSelectedTagId] = useState<number | null>(null);
     const [sortBy, setSortBy] = useState<'title' | 'updated' | 'added'>('updated');
+    const navigate = useNavigate();
+    const dialog = useDialog();
 
     const [filteredMangaIds, setFilteredMangaIds] = useState<Set<string> | null>(null);
     const [isFiltering, setIsFiltering] = useState(false);
+
+    const [contextMenu, setContextMenu] = useState<ContextMenuState>({
+        visible: false,
+        x: 0,
+        y: 0,
+        manga: null
+    });
+
+    const [isTagSelectorOpen, setIsTagSelectorOpen] = useState(false);
+    const [tagEditManga, setTagEditManga] = useState<Manga | null>(null);
+
+    const sortOptions = [
+        { value: 'updated', label: 'Last Updated' },
+        { value: 'added', label: 'Recently Added' },
+        { value: 'title', label: 'Title A-Z' }
+    ];
 
     useEffect(() => {
         const fetchTaggedManga = async () => {
@@ -80,6 +110,71 @@ function Gallery() {
         return filtered;
     }, [library, searchQuery, selectedTagId, filteredMangaIds, sortBy, extensions, hideNsfwInLibrary, hideNsfwInTags, hideNsfwCompletely]);
 
+    const handleContextMenu = (e: React.MouseEvent, manga: { id: string; title: string; extensionId: string }) => {
+        setContextMenu({
+            visible: true,
+            x: e.clientX,
+            y: e.clientY,
+            manga
+        });
+    };
+
+    const closeContextMenu = () => {
+        setContextMenu(prev => ({ ...prev, visible: false }));
+    };
+
+    const getContextMenuItems = (): ContextMenuItem[] => {
+        if (!contextMenu.manga) return [];
+        const { id, title, extensionId } = contextMenu.manga;
+
+        // Find the full manga data
+        const fullManga = library.find(m => m.source_manga_id === id && m.source_id === extensionId);
+
+        return [
+            {
+                label: 'View Details',
+                onClick: () => navigate(`/manga/${extensionId}/${encodeURIComponent(id)}`)
+            },
+            {
+                label: 'Continue Reading',
+                onClick: async () => {
+                    // Load chapters and navigate to first chapter
+                    const chapters = await window.electronAPI.extensions.getChapterList(extensionId, id);
+                    if (chapters && chapters.length > 0) {
+                        const firstChapter = chapters[chapters.length - 1]; // First chapter (oldest)
+                        navigate(`/read/${extensionId}/${encodeURIComponent(firstChapter.id)}`, {
+                            state: { mangaId: id, mangaTitle: title }
+                        });
+                    }
+                }
+            },
+            { label: '', onClick: () => { }, divider: true },
+            {
+                label: 'Manage Tags',
+                onClick: () => {
+                    if (fullManga) {
+                        setTagEditManga(fullManga);
+                        setIsTagSelectorOpen(true);
+                    }
+                }
+            },
+            { label: '', onClick: () => { }, divider: true },
+            {
+                label: 'Remove from Library',
+                danger: true,
+                onClick: async () => {
+                    const confirmed = await dialog.confirm({
+                        title: 'Remove from Library',
+                        message: `Remove "${title}" from your library?`
+                    });
+                    if (confirmed && fullManga) {
+                        await removeFromLibrary(fullManga.id);
+                    }
+                }
+            }
+        ];
+    };
+
     if (loadingLibrary) {
         return (
             <div className="loading-state">
@@ -111,15 +206,11 @@ function Gallery() {
                 <div className="filter-bar">
                     <div className="sort-group">
                         <span className="sort-label">Sort by:</span>
-                        <select
-                            className="input sort-select"
+                        <CustomDropdown
+                            options={sortOptions}
                             value={sortBy}
-                            onChange={(e) => setSortBy(e.target.value as any)}
-                        >
-                            <option value="updated">Last Updated</option>
-                            <option value="added">Recently Added</option>
-                            <option value="title">Title A-Z</option>
-                        </select>
+                            onChange={(value) => setSortBy(value as any)}
+                        />
                     </div>
 
                     {tags.length > 0 && (
@@ -170,9 +261,29 @@ function Gallery() {
                             inLibrary
                             totalChapters={manga.total_chapters}
                             readChapters={manga.read_chapters}
+                            onContextMenu={handleContextMenu}
                         />
                     ))}
                 </div>
+            )}
+
+            {contextMenu.visible && (
+                <ContextMenu
+                    x={contextMenu.x}
+                    y={contextMenu.y}
+                    items={getContextMenuItems()}
+                    onClose={closeContextMenu}
+                />
+            )}
+
+            {isTagSelectorOpen && tagEditManga && (
+                <TagSelector
+                    mangaId={tagEditManga.id}
+                    onClose={() => {
+                        setIsTagSelectorOpen(false);
+                        setTagEditManga(null);
+                    }}
+                />
             )}
         </div>
     );
