@@ -5,7 +5,7 @@ import { useSettingsStore } from '../stores/settingsStore';
 import './History.css';
 
 function History() {
-    const { history, loadHistory } = useAppStore();
+    const { history, loadHistory, removeFromHistory } = useAppStore();
     const { disabledExtensions } = useSettingsStore();
     const navigate = useNavigate();
     const location = useLocation();
@@ -115,6 +115,22 @@ function History() {
                                                 {entry.source_id?.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || 'Unknown Source'}
                                             </p>
                                         </div>
+                                        <button
+                                            className="history-delete-btn"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (confirm('Remove this manga from history?')) {
+                                                    removeFromHistory(entry.manga_id);
+                                                }
+                                            }}
+                                            title="Remove from history"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M3 6h18"></path>
+                                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                            </svg>
+                                        </button>
                                         <button className="btn btn-secondary history-continue">
                                             Continue
                                         </button>

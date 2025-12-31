@@ -447,6 +447,10 @@ function setupIpcHandlers(extensionsPath: string) {
         `).all(limit);
     });
 
+    ipcMain.handle('db:deleteHistory', async (_, mangaId: string) => {
+        db.prepare('DELETE FROM history WHERE manga_id = ?').run(mangaId);
+    });
+
     ipcMain.handle('db:getTags', async () => {
         return db.prepare(`
             SELECT t.*, COUNT(mt.manga_id) as count 

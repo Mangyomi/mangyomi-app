@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
         saveReadingProgress: (manga: any, chapter: any, pageNumber: number) =>
             ipcRenderer.invoke('db:saveReadingProgress', manga, chapter, pageNumber),
         getHistory: (limit?: number) => ipcRenderer.invoke('db:getHistory', limit),
+        deleteHistory: (mangaId: string) => ipcRenderer.invoke('db:deleteHistory', mangaId),
         getTags: () => ipcRenderer.invoke('db:getTags'),
         createTag: (name: string, color: string) => ipcRenderer.invoke('db:createTag', name, color),
         updateTag: (id: number, name: string, color: string) => ipcRenderer.invoke('db:updateTag', id, name, color),

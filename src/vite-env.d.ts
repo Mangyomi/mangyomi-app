@@ -37,6 +37,7 @@ interface Window {
             markChaptersUnread: (chapterIds: string[]) => Promise<void>;
             saveReadingProgress: (manga: any, chapter: any, pageNumber: number) => Promise<void>;
             getHistory: (limit?: number) => Promise<any[]>;
+            deleteHistory: (mangaId: string) => Promise<void>;
             getTags: () => Promise<any[]>;
             createTag: (name: string, color: string) => Promise<any>;
             updateTag: (id: number, name: string, color: string) => Promise<void>;

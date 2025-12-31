@@ -90,3 +90,23 @@
 .history-continue {
     flex-shrink: 0;
 }
+
+.history-delete-btn {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    color: var(--color-text-muted);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.history-delete-btn:hover {
+    color: var(--color-error);
+    background: var(--color-bg-secondary);
+}

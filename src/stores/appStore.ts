@@ -104,6 +104,7 @@ interface AppState {
     addToLibrary: (manga: any, extensionId: string) => Promise<void>;
     removeFromLibrary: (mangaId: string) => Promise<void>;
     loadHistory: () => Promise<void>;
+    removeFromHistory: (mangaId: string) => Promise<void>;
     loadTags: () => Promise<void>;
     createTag: (name: string, color: string) => Promise<void>;
     updateTag: (id: number, name: string, color: string) => Promise<void>;
@@ -369,6 +370,15 @@ export const useAppStore = create<AppState>((set, get) => ({
             set({ history });
         } catch (error) {
             console.error('Failed to load history:', error);
+        }
+    },
+
+    removeFromHistory: async (mangaId: string) => {
+        try {
+            await window.electronAPI.db.deleteHistory(mangaId);
+            await get().loadHistory();
+        } catch (error) {
+            console.error('Failed to remove from history:', error);
         }
     },
 
