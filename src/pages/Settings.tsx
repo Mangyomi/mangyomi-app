@@ -15,10 +15,18 @@ function Settings() {
         defaultReaderMode,
         prefetchChapters,
         maxCacheSize,
+        hideNsfwInLibrary,
+        hideNsfwInHistory,
+        hideNsfwInTags,
+        hideNsfwCompletely,
         setTheme,
         setDefaultReaderMode,
         setPrefetchChapters,
         setMaxCacheSize,
+        setHideNsfwInLibrary,
+        setHideNsfwInHistory,
+        setHideNsfwInTags,
+        setHideNsfwCompletely,
     } = useSettingsStore();
 
     const formatSize = (bytes: number) => {
@@ -91,6 +99,94 @@ function Settings() {
                                         <span className="toggle-label">{mode.label}</span>
                                     </button>
                                 ))}
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Content Filter Section */}
+                <section className="settings-section">
+                    <h2 className="section-title">Content Filter</h2>
+
+                    {/* Main Toggle */}
+                    <div className="setting-item">
+                        <div className="setting-info">
+                            <label className="setting-label">Hide All NSFW Content</label>
+                            <span className="setting-description">
+                                Completely hide manga from NSFW sources everywhere
+                            </span>
+                        </div>
+                        <div className="setting-control">
+                            <label className="checkbox-switch">
+                                <input
+                                    type="checkbox"
+                                    checked={hideNsfwCompletely}
+                                    onChange={(e) => setHideNsfwCompletely(e.target.checked)}
+                                />
+                                <span className="checkbox-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    {/* Sub-options */}
+                    <div className={`sub-settings ${hideNsfwCompletely ? 'disabled' : ''}`}>
+                        <div className="setting-item sub-item">
+                            <div className="setting-info">
+                                <label className="setting-label">Hide in Library</label>
+                                <span className="setting-description">
+                                    Hide NSFW manga in the Library "All" view
+                                </span>
+                            </div>
+                            <div className="setting-control">
+                                <label className="checkbox-switch">
+                                    <input
+                                        type="checkbox"
+                                        checked={hideNsfwCompletely || hideNsfwInLibrary}
+                                        disabled={hideNsfwCompletely}
+                                        onChange={(e) => setHideNsfwInLibrary(e.target.checked)}
+                                    />
+                                    <span className="checkbox-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div className="setting-item sub-item">
+                            <div className="setting-info">
+                                <label className="setting-label">Hide in History</label>
+                                <span className="setting-description">
+                                    Hide NSFW manga in your reading history
+                                </span>
+                            </div>
+                            <div className="setting-control">
+                                <label className="checkbox-switch">
+                                    <input
+                                        type="checkbox"
+                                        checked={hideNsfwCompletely || hideNsfwInHistory}
+                                        disabled={hideNsfwCompletely}
+                                        onChange={(e) => setHideNsfwInHistory(e.target.checked)}
+                                    />
+                                    <span className="checkbox-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div className="setting-item sub-item">
+                            <div className="setting-info">
+                                <label className="setting-label">Hide in Tags</label>
+                                <span className="setting-description">
+                                    Hide NSFW manga in tag views and Tags page
+                                </span>
+                            </div>
+                            <div className="setting-control">
+                                <label className="checkbox-switch">
+                                    <input
+                                        type="checkbox"
+                                        checked={hideNsfwCompletely || hideNsfwInTags}
+                                        disabled={hideNsfwCompletely}
+                                        onChange={(e) => setHideNsfwInTags(e.target.checked)}
+                                    />
+                                    <span className="checkbox-slider"></span>
+                                </label>
                             </div>
                         </div>
                     </div>

@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAppStore, Tag, Manga } from '../stores/appStore';
+import { useSettingsStore } from '../stores/settingsStore';
 import MangaCard from '../components/MangaCard/MangaCard';
 import ConfirmModal from '../components/ConfirmModal/ConfirmModal';
 import './Tags.css';
@@ -11,7 +12,8 @@ const TAG_COLORS = [
 ];
 
 function Tags() {
-    const { tags, loadTags, createTag, updateTag, deleteTag, getMangaByTag } = useAppStore();
+    const { tags, loadTags, createTag, updateTag, deleteTag, getMangaByTag, extensions } = useAppStore();
+    const { hideNsfwInTags, hideNsfwCompletely } = useSettingsStore();
 
     useEffect(() => {
         loadTags();
@@ -101,6 +103,15 @@ function Tags() {
         setTagManga([]);
     };
 
+    // Filter NSFW manga from tag results
+    const filteredTagManga = useMemo(() => {
+        if (!hideNsfwCompletely && !hideNsfwInTags) return tagManga;
+        const nsfwExtensions = new Set(
+            extensions.filter(ext => ext.nsfw).map(ext => ext.id)
+        );
+        return tagManga.filter(manga => !nsfwExtensions.has(manga.source_id));
+    }, [tagManga, hideNsfwCompletely, hideNsfwInTags, extensions]);
+
     if (selectedTag) {
         return (
             <div className="tags-page">
@@ -126,7 +137,7 @@ function Tags() {
                     <div className="loading-state">
                         <div className="spinner"></div>
                     </div>
-                ) : tagManga.length === 0 ? (
+                ) : filteredTagManga.length === 0 ? (
                     <div className="empty-state">
                         <div className="empty-state-icon">📚</div>
                         <h2 className="empty-state-title">No manga with this tag</h2>
@@ -136,7 +147,7 @@ function Tags() {
                     </div>
                 ) : (
                     <div className="manga-grid">
-                        {tagManga.map(manga => (
+                        {filteredTagManga.map(manga => (
                             <MangaCard
                                 key={manga.id}
                                 id={manga.source_manga_id}

@@ -6,8 +6,8 @@ import { useDialog } from '../components/ConfirmModal/DialogContext';
 import './History.css';
 
 function History() {
-    const { history, loadHistory, removeFromHistory } = useAppStore();
-    const { disabledExtensions } = useSettingsStore();
+    const { history, loadHistory, removeFromHistory, extensions } = useAppStore();
+    const { disabledExtensions, hideNsfwInHistory, hideNsfwCompletely } = useSettingsStore();
     const navigate = useNavigate();
     const location = useLocation();
     const dialog = useDialog();
@@ -16,7 +16,17 @@ function History() {
         loadHistory();
     }, [location.key]);
 
-    const visibleHistory = history.filter(entry => !disabledExtensions.has(entry.source_id));
+    // Build set of NSFW extension IDs
+    const nsfwExtensions = new Set(
+        extensions.filter(ext => ext.nsfw).map(ext => ext.id)
+    );
+
+    const visibleHistory = history.filter(entry => {
+        if (disabledExtensions.has(entry.source_id)) return false;
+        if (hideNsfwCompletely && nsfwExtensions.has(entry.source_id)) return false;
+        if (hideNsfwInHistory && nsfwExtensions.has(entry.source_id)) return false;
+        return true;
+    });
 
     const groupedHistory = visibleHistory.reduce((groups, entry) => {
         const date = new Date(entry.read_at * 1000).toLocaleDateString('en-US', {

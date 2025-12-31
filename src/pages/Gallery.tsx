@@ -1,10 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useAppStore } from '../stores/appStore';
+import { useSettingsStore } from '../stores/settingsStore';
 import MangaCard from '../components/MangaCard';
 import './Gallery.css';
 
 function Gallery() {
-    const { library, loadingLibrary, tags } = useAppStore();
+    const { library, loadingLibrary, tags, extensions } = useAppStore();
+    const { hideNsfwInLibrary, hideNsfwInTags, hideNsfwCompletely } = useSettingsStore();
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedTagId, setSelectedTagId] = useState<number | null>(null);
     const [sortBy, setSortBy] = useState<'title' | 'updated' | 'added'>('updated');
@@ -34,7 +36,21 @@ function Gallery() {
     }, [selectedTagId]);
 
     const filteredLibrary = useMemo(() => {
+        // Build set of NSFW extension IDs
+        const nsfwExtensions = new Set(
+            extensions.filter(ext => ext.nsfw).map(ext => ext.id)
+        );
+
         let filtered = [...library];
+
+        // Apply NSFW filtering
+        if (hideNsfwCompletely) {
+            filtered = filtered.filter(m => !nsfwExtensions.has(m.source_id));
+        } else if (selectedTagId === null && hideNsfwInLibrary) {
+            filtered = filtered.filter(m => !nsfwExtensions.has(m.source_id));
+        } else if (selectedTagId !== null && hideNsfwInTags) {
+            filtered = filtered.filter(m => !nsfwExtensions.has(m.source_id));
+        }
 
         if (selectedTagId !== null && filteredMangaIds) {
             filtered = filtered.filter(m => filteredMangaIds.has(m.id));
@@ -62,7 +78,7 @@ function Gallery() {
         });
 
         return filtered;
-    }, [library, searchQuery, selectedTagId, filteredMangaIds, sortBy]);
+    }, [library, searchQuery, selectedTagId, filteredMangaIds, sortBy, extensions, hideNsfwInLibrary, hideNsfwInTags, hideNsfwCompletely]);
 
     if (loadingLibrary) {
         return (

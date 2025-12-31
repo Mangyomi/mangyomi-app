@@ -221,6 +221,85 @@
     transform: translateY(0);
 }
 
+/* Checkbox Switch */
+.checkbox-switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 26px;
+}
+
+.checkbox-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.checkbox-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 26px;
+    transition: all 0.3s ease;
+}
+
+.checkbox-slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 2px;
+    bottom: 2px;
+    background-color: var(--text-muted);
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.checkbox-switch input:checked+.checkbox-slider {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+.checkbox-switch input:checked+.checkbox-slider:before {
+    transform: translateX(22px);
+    background-color: white;
+}
+
+.checkbox-switch input:disabled+.checkbox-slider {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Sub-settings for nested options */
+.sub-settings {
+    margin-left: 20px;
+    padding-left: 16px;
+    border-left: 2px solid var(--border-color);
+    transition: opacity 0.3s ease;
+}
+
+.sub-settings.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.sub-settings .setting-item.sub-item {
+    padding: 12px 0;
+}
+
+.sub-settings .setting-item.sub-item:first-child {
+    padding-top: 16px;
+}
+
+.sub-settings .setting-item.sub-item:last-child {
+    border-bottom: none;
+}
+
 /* Responsive */
 @media (max-width: 600px) {
     .setting-item {
