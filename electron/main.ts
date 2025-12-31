@@ -419,9 +419,8 @@ function setupIpcHandlers() {
                 db.prepare('UPDATE history SET read_at = strftime(\'%s\', \'now\'), page_number = ? WHERE id = ?')
                     .run(pageNumber, lastEntry.id);
             } else {
-                // Different chapter or first read
-                // Remove any old entries for this chapter to ensure uniqueness (move to top)
-                db.prepare('DELETE FROM history WHERE chapter_id = ?').run(chapter.id);
+                // Different chapter - delete ALL history entries for this manga to ensure one entry per manga
+                db.prepare('DELETE FROM history WHERE manga_id = ?').run(manga.id);
 
                 db.prepare(`INSERT INTO history (manga_id, chapter_id, page_number) VALUES (?, ?, ?)`)
                     .run(manga.id, chapter.id, pageNumber);
@@ -433,17 +432,19 @@ function setupIpcHandlers() {
 
     ipcMain.handle('db:getHistory', async (_, limit: number = 50) => {
         return db.prepare(`
-      SELECT h.*, m.title as manga_title, m.cover_url, m.source_id,
-             c.title as chapter_title, c.chapter_number
-      FROM history h
-      JOIN manga m ON h.manga_id = m.id
-      JOIN chapter c ON h.chapter_id = c.id
-      WHERE h.read_at = (
-        SELECT MAX(h2.read_at) FROM history h2 WHERE h2.manga_id = h.manga_id
-      )
-      ORDER BY h.read_at DESC
-      LIMIT ?
-    `).all(limit);
+            SELECT h.*, m.title as manga_title, m.cover_url, m.source_id,
+                   c.title as chapter_title, c.chapter_number
+            FROM history h
+            JOIN manga m ON h.manga_id = m.id
+            JOIN chapter c ON h.chapter_id = c.id
+            INNER JOIN (
+                SELECT manga_id, MAX(read_at) as max_read_at
+                FROM history
+                GROUP BY manga_id
+            ) latest ON h.manga_id = latest.manga_id AND h.read_at = latest.max_read_at
+            ORDER BY h.read_at DESC
+            LIMIT ?
+        `).all(limit);
     });
 
     ipcMain.handle('db:getTags', async () => {

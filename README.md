@@ -2,7 +2,9 @@
 
 A Tachiyomi-style manga reader desktop application built with Electron and React.
 
-![Mangyomi Screenshot](./docs/screenshot.png)
+![Mangyomi Screenshot](./docs/manga_library.png)
+
+**[📸 View Full Showcase](./SHOWCASE.md)**
 
 ## Features
 
