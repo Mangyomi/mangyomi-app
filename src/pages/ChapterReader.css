@@ -61,9 +61,22 @@
 }
 
 .reader-nav-actions,
-.reader-options {
+.reader-options,
+.reader-zoom-controls,
+.reader-mode-controls {
     display: flex;
     gap: var(--spacing-xs);
+    align-items: center;
+}
+
+.reader-options {
+    gap: var(--spacing-lg);
+}
+
+.btn-text {
+    font-size: var(--font-size-sm);
+    min-width: 60px;
+    color: var(--color-text-primary);
 }
 
 .reader-options .btn-icon.active {
@@ -122,14 +135,13 @@
 .reader-scroll-container {
     flex: 1;
     overflow-y: auto;
+    overflow-x: auto;
+    /* Allow horizontal scroll for zoomed images */
     display: flex;
     flex-direction: column;
-    align-items: center;
     padding: 60px 0;
     scrollbar-width: none;
-    /* Firefox */
-    -ms-overflow-style: none;
-    /* IE and Edge */
+    /* Hide scrollbar completely */
 }
 
 .reader-scroll-container::-webkit-scrollbar {
@@ -138,11 +150,12 @@
 }
 
 .reader-image {
-    max-width: 70vw;
-    /* Limit width to 70% of viewport */
+    /* Width controlled by inline style for zoom */
     width: auto;
     height: auto;
     display: block;
+    margin: 0 auto;
+    /* Center image when smaller than viewport */
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
     /* Add shadow for depth */
 }
@@ -174,15 +187,17 @@
 .reader-horizontal-container {
     flex: 1;
     display: flex;
-    align-items: center;
-    justify-content: center;
     position: relative;
+    overflow: auto;
+    /* Allow scrolling when zoomed */
 }
 
 .reader-page {
     max-width: 100%;
     max-height: 100vh;
     object-fit: contain;
+    margin: auto;
+    /* Safe centering */
 }
 
 .page-nav {

@@ -25,9 +25,14 @@ function ChapterReader() {
 
     const [loading, setLoading] = useState(true);
     const [readerMode, setReaderMode] = useState<'vertical' | 'horizontal'>(defaultReaderMode);
+    const [zoomLevel, setZoomLevel] = useState(1);
     const containerRef = useRef<HTMLDivElement>(null);
 
     const chapterId = decodeURIComponent(chapterIdParam || '');
+
+    const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.25, 3));
+    const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.25, 0.5));
+    const handleResetZoom = () => setZoomLevel(1);
 
     const locationState = location.state as { mangaId?: string; mangaTitle?: string } | null;
 
@@ -79,6 +84,14 @@ function ChapterReader() {
             hasMarkedReadRef.current = chapterId;
         }
     }, [currentManga, currentPages, chapterId, markChapterRead]);
+
+    // Reset scroll position when page changes in horizontal mode
+    useEffect(() => {
+        if (readerMode === 'horizontal' && containerRef.current) {
+            containerRef.current.scrollTop = 0;
+            containerRef.current.scrollLeft = 0;
+        }
+    }, [currentPageIndex, readerMode]);
 
     useEffect(() => {
         if (!extensionId || prefetchChapters === 0 || currentChapters.length === 0) return;
@@ -136,6 +149,16 @@ function ChapterReader() {
                     setCurrentPageIndex(currentPageIndex - 1);
                 } else if (e.key === 'ArrowRight' && currentPageIndex < currentPages.length - 1) {
                     setCurrentPageIndex(currentPageIndex + 1);
+                }
+            }
+
+            // Handle scroll with arrow keys
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                if (containerRef.current) {
+                    e.preventDefault();
+                    const direction = e.key === 'ArrowDown' ? 1 : -1;
+                    const scrollAmount = 50; // Pixels to scroll
+                    containerRef.current.scrollBy({ top: direction * scrollAmount, behavior: 'auto' });
                 }
             }
 
@@ -227,20 +250,33 @@ function ChapterReader() {
                     </div>
 
                     <div className="reader-options">
-                        <button
-                            className={`btn btn-ghost btn-icon ${readerMode === 'vertical' ? 'active' : ''}`}
-                            onClick={() => setReaderMode('vertical')}
-                            title="Vertical scroll"
-                        >
-                            ↕
-                        </button>
-                        <button
-                            className={`btn btn-ghost btn-icon ${readerMode === 'horizontal' ? 'active' : ''}`}
-                            onClick={() => setReaderMode('horizontal')}
-                            title="Horizontal pages"
-                        >
-                            ↔
-                        </button>
+                        <div className="reader-zoom-controls">
+                            <button className="btn btn-ghost btn-icon" onClick={handleZoomOut} title="Zoom Out">
+                                -
+                            </button>
+                            <button className="btn btn-ghost btn-text" onClick={handleResetZoom} title="Reset Zoom">
+                                {Math.round(zoomLevel * 100)}%
+                            </button>
+                            <button className="btn btn-ghost btn-icon" onClick={handleZoomIn} title="Zoom In">
+                                +
+                            </button>
+                        </div>
+                        <div className="reader-mode-controls">
+                            <button
+                                className={`btn btn-ghost btn-icon ${readerMode === 'vertical' ? 'active' : ''}`}
+                                onClick={() => setReaderMode('vertical')}
+                                title="Vertical scroll"
+                            >
+                                ↕
+                            </button>
+                            <button
+                                className={`btn btn-ghost btn-icon ${readerMode === 'horizontal' ? 'active' : ''}`}
+                                onClick={() => setReaderMode('horizontal')}
+                                title="Horizontal pages"
+                            >
+                                ↔
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -308,6 +344,10 @@ function ChapterReader() {
                                 alt={`Page ${index + 1}`}
                                 className="reader-image"
                                 loading="lazy"
+                                style={{
+                                    width: `${70 * zoomLevel}vw`,
+                                    maxWidth: 'none'
+                                }}
                             />
                         );
                     })}
@@ -330,7 +370,7 @@ function ChapterReader() {
                     </div>
                 </div>
             ) : (
-                <div className="reader-horizontal-container">
+                <div className="reader-horizontal-container" ref={containerRef}>
                     <button
                         className="page-nav prev"
                         onClick={() => setCurrentPageIndex(Math.max(0, currentPageIndex - 1))}
@@ -347,6 +387,10 @@ function ChapterReader() {
                         }
                         alt={`Page ${currentPageIndex + 1}`}
                         className="reader-page"
+                        style={{
+                            maxHeight: `${100 * zoomLevel}vh`,
+                            maxWidth: 'none'
+                        }}
                     />
 
                     <button
