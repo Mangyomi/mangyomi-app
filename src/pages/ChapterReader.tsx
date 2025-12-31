@@ -19,9 +19,21 @@ function ChapterReader() {
         prefetchChapter,
         loadChapters,
         loadMangaDetails,
+        extensions,
     } = useAppStore();
 
-    const { prefetchChapters, defaultReaderMode } = useSettingsStore();
+    // Settings for Discord RPC
+    const {
+        prefetchChapters,
+        defaultReaderMode,
+        discordRpcEnabled,
+        discordRpcHideNsfw,
+        hideNsfwCompletely,
+        hideNsfwInLibrary,
+        hideNsfwInTags,
+        hideNsfwInHistory,
+        discordRpcStrictNsfw
+    } = useSettingsStore();
 
     const [loading, setLoading] = useState(true);
     const [readerMode, setReaderMode] = useState<'vertical' | 'horizontal'>(defaultReaderMode);
@@ -51,6 +63,82 @@ function ChapterReader() {
             }
         }
     }, [extensionId, locationState?.mangaId, chapterId]);
+
+    // Discord RPC Effect
+    useEffect(() => {
+        if (!discordRpcEnabled || !window.electronAPI.discord) return;
+
+        const updateStatus = async () => {
+            if (!currentManga || !chapterId) return;
+
+            // Get source info
+            const extension = extensions.find(e => e.id === extensionId);
+
+            // Check Privacy Settings
+            // Check if manga is explicitly NSFW or if the extension itself is NSFW (if strict mode enabled)
+            const isExplicitNsfw = currentManga.nsfw || false;
+            const isExtensionNsfw = extension?.nsfw || false;
+
+            const isNsfw = isExplicitNsfw || (discordRpcStrictNsfw && isExtensionNsfw);
+            const shouldHide = discordRpcHideNsfw && isNsfw;
+
+            if (shouldHide) {
+                await window.electronAPI.discord.clearActivity();
+                return;
+            }
+
+            const chapterTitle = currentChapters.find(c => c.id === chapterId)?.title || `Chapter ${chapterId.split('/').pop()?.replace('chapter-', '')}`;
+
+            // Get source name for small icon
+            const sourceName = extension?.name || 'Mangyomi';
+            // Discord keys should be lowercase and have no spaces
+            const smallImageKey = sourceName.toLowerCase().replace(/\s+/g, '');
+
+            // Build buttons array
+            const buttons: { label: string; url: string }[] = [];
+
+            // Add AniList button if manga has anilistId
+            if (currentManga.anilistId) {
+                buttons.push({
+                    label: 'View on AniList',
+                    url: `https://anilist.co/manga/${currentManga.anilistId}`
+                });
+            }
+
+            // Always add GitHub button
+            buttons.push({
+                label: 'Mangyomi on GitHub',
+                url: 'https://github.com/Mangyomi/mangyomi-app'
+            });
+
+            await window.electronAPI.discord.updateActivity(
+                currentManga.title,
+                `Reading ${chapterTitle}`,
+                'icon', // 'icon' is the asset key uploaded by the user
+                'Mangyomi',
+                smallImageKey,
+                sourceName,
+                buttons
+            );
+        };
+
+        updateStatus();
+
+        return () => {
+            // Optional: Don't clear on every chapter change, only on unmount or if feature disabled
+            // But since this effect runs on chapterId change, we just let the next update overwrite it.
+            // We only clear on unmount of the component (leaving reader).
+        };
+    }, [discordRpcEnabled, discordRpcHideNsfw, discordRpcStrictNsfw, currentManga, chapterId, currentChapters, extensions]);
+
+    // Clear activity on unmount (leaving reader)
+    useEffect(() => {
+        return () => {
+            if (discordRpcEnabled && window.electronAPI.discord) {
+                window.electronAPI.discord.clearActivity();
+            }
+        };
+    }, [discordRpcEnabled]);
 
     const hasMarkedReadRef = useRef<string>('');
 

@@ -5,6 +5,7 @@ import { initDatabase, getDatabase } from './database';
 import { loadExtensions, getExtension, getAllExtensions, reloadExtensions } from './extensions/loader';
 import { listAvailableExtensions, installExtension, uninstallExtension, isExtensionInstalled, installLocalExtension } from './extensions/installer';
 import { anilistAPI, setClientId, openAuthWindow, logout, isAuthenticated, serializeTokenData, deserializeTokenData } from './anilist';
+import { connect as connectDiscord, updateActivity, clearActivity } from './discord';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -832,9 +833,21 @@ ${networkActivity || 'No renderer network activity captured.'}
     ipcMain.handle('anilist:setTokenData', async (_, data: string) => {
         deserializeTokenData(data);
     });
+
+    // Discord RPC IPC Handlers
+    ipcMain.handle('discord:updateActivity', async (_, details: string, state: string, largeImageKey?: string, largeImageText?: string, smallImageKey?: string, smallImageText?: string, buttons?: { label: string; url: string }[]) => {
+        return await updateActivity(details, state, largeImageKey, largeImageText, smallImageKey, smallImageText, buttons);
+    });
+
+    ipcMain.handle('discord:clearActivity', async () => {
+        return await clearActivity();
+    });
 }
 
 app.whenReady().then(async () => {
+    // Initialize Discord RPC
+    connectDiscord().catch(console.error);
+
     const dbPath = path.join(app.getPath('userData'), 'mangyomi.db');
     await initDatabase(dbPath);
 

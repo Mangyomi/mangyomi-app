@@ -94,4 +94,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
         getTokenData: () => ipcRenderer.invoke('anilist:getTokenData'),
         setTokenData: (data: string) => ipcRenderer.invoke('anilist:setTokenData', data),
     },
+
+    discord: {
+        updateActivity: (details: string, state: string, largeImageKey?: string, largeImageText?: string, smallImageKey?: string, smallImageText?: string, buttons?: { label: string; url: string }[]) =>
+            ipcRenderer.invoke('discord:updateActivity', details, state, largeImageKey, largeImageText, smallImageKey, smallImageText, buttons),
+        clearActivity: () => ipcRenderer.invoke('discord:clearActivity'),
+    },
 });

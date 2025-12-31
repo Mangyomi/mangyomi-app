@@ -21,16 +21,20 @@
   "license": "Apache-2.0",
   "dependencies": {
     "adm-zip": "^0.5.16",
+    "bufferutil": "^4.1.0",
+    "discord-rpc": "^4.0.1",
     "jsdom": "^25.0.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.1.1",
     "sql.js": "^1.13.0",
+    "utf-8-validate": "^5.0.10",
     "zustand": "^5.0.2"
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.2",
     "@types/adm-zip": "^0.5.7",
+    "@types/discord-rpc": "^4.0.10",
     "@types/node": "^22.10.3",
     "@types/react": "^18.3.27",
     "@types/react-dom": "^18.3.7",

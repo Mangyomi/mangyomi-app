@@ -41,6 +41,11 @@ const Icons = {
             <path fillRule="evenodd" clipRule="evenodd" d="M14.6493 2.16075C13.2033 1.56475 11.5853 1.54275 10.1213 2.06275L9.62332 3.46875C9.46732 3.90875 9.06632 4.22075 8.60432 4.26475L7.13532 4.40475C5.72332 4.54075 4.39932 5.17675 3.39532 6.19575L2.34832 7.25375C1.34732 8.26775 0.730321 9.59975 0.605321 11.0188L0.475321 12.4938C0.434321 12.9578 0.125321 13.3618 -0.312679 13.5218L-1.70968 14.0328C-3.16068 14.5638 -4.16868 15.9398 -4.20568 17.5058C-4.22968 18.5298 -3.85868 19.5088 -3.15968 20.2458L3.75432 13.3328C4.53532 12.5518 5.79932 12.5518 6.58032 13.3328C7.36132 14.1138 7.36132 15.3778 6.58032 16.1588L-0.332679 23.0718C0.395321 23.7848 1.36632 24.1708 2.39032 24.1618C3.95532 24.1488 5.34132 23.1508 5.88932 21.7058L6.41732 20.3148C6.58332 19.8778 6.99732 19.5708 7.46632 19.5358L8.95532 19.4248C10.3873 19.3178 11.7313 18.6678 12.7503 17.6338L13.8113 16.5598C14.8283 15.5298 15.4543 14.1758 15.5803 12.7308L15.7113 11.2368C15.7533 10.7678 16.0663 10.3588 16.5103 10.1988L17.9253 9.68775C19.3893 9.15775 20.4073 7.77075 20.4433 6.19575C20.4803 4.54275 19.4703 3.03075 17.9653 2.40975L14.6493 2.16075ZM22.2473 11.7768C22.6863 11.9568 23.0803 11.5628 22.9003 11.1238L19.4973 2.80975C19.3363 2.41675 18.7893 2.39375 18.5953 2.76075C17.6533 4.53875 15.7553 5.76475 13.5653 5.80175C11.3753 5.83975 9.38632 4.71775 8.32432 3.00375C8.07732 2.60575 7.49832 2.57775 7.29132 2.96975L3.38532 10.3478C3.17832 10.7388 3.52032 11.1898 3.94732 11.0858C5.50832 10.7048 7.15932 10.8758 8.60832 11.5948C9.52932 12.0518 10.3413 12.6988 11.0153 13.4888L11.0963 13.5688C11.7963 14.2498 12.4283 15.0688 12.8683 15.9988C13.5603 17.4618 13.7103 19.1248 13.3073 20.6978C13.2003 21.1168 13.6263 21.4888 14.0223 21.3068L22.2473 11.7768Z" fill="currentColor" />
         </svg>
     ),
+    Discord: () => (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M19.27 5.33C17.94 4.71 16.5 4.26 15 4a.09.09 0 0 0-.07.03c-.18.33-.39.76-.53 1.09a16.09 16.09 0 0 0-4.8 0c-.14-.34-.35-.76-.54-1.09c-.01-.02-.04-.03-.07-.03c-1.5.26-2.93.71-4.27 1.33c-.01 0-.02.01-.03.02c-2.72 4.07-3.47 8.03-3.1 11.95c0 .02.01.04.03.05c1.8 1.32 3.53 2.12 5.24 2.65c.03.01.06 0 .07-.02c.4-.55.76-1.13 1.07-1.74c.02-.04 0-.08-.04-.09c-.57-.22-1.11-.48-1.64-.78c-.04-.02-.04-.08-.01-.11c.11-.08.22-.17.33-.25c.02-.02.05-.02.07-.01c3.44 1.57 7.15 1.57 10.55 0c.02-.01.05-.01.07.01c.11.09.22.17.33.26c.04.03.04.09-.01.11c-.52.31-1.07.56-1.64.78c-.04.01-.05.06-.04.1c.31.61.67 1.19 1.07 1.74c.03.01.06.02.09.01c1.72-.53 3.45-1.33 5.25-2.65c.02-.01.03-.03.03-.05c.44-4.53-.73-8.46-3.1-11.95c-.01-.01-.02-.02-.04-.02zM8.52 14.91c-1.03 0-1.89-.95-1.89-2.12s.84-2.12 1.89-2.12c1.06 0 1.9.96 1.89 2.12c0 1.17-.84 2.12-1.89 2.12zm6.97 0c-1.03 0-1.89-.95-1.89-2.12s.84-2.12 1.89-2.12c1.06 0 1.9.96 1.89 2.12c0 1.17-.85 2.12-1.89 2.12z" fill="currentColor" />
+        </svg>
+    ),
 };
 
 // Category definitions
@@ -50,6 +55,7 @@ const CATEGORIES = [
     { id: 'reader', label: 'Reader', icon: <Icons.Reader /> },
     { id: 'cache', label: 'Storage', icon: <Icons.Storage /> },
     { id: 'tracking', label: 'Tracking', icon: <Icons.Tracking /> },
+    { id: 'discord', label: 'Discord', icon: <Icons.Discord /> },
     { id: 'advanced', label: 'Advanced', icon: <Icons.Advanced /> },
 ] as const;
 
@@ -75,6 +81,9 @@ const SETTING_DEFINITIONS: SettingDef[] = [
     { id: 'cache-size', category: 'cache', label: 'Max Cache Size', description: 'Limit disk space for offline images', keywords: ['storage', 'disk', 'space', 'limit'] },
     { id: 'clear-cache', category: 'cache', label: 'Clear Cache', description: 'Delete all cached images and browser data', keywords: ['clear', 'delete', 'clean'] },
     { id: 'anilist', category: 'tracking', label: 'AniList', description: 'Sync reading progress with AniList', keywords: ['anilist', 'sync', 'tracking', 'progress'] },
+    { id: 'discord', category: 'discord', label: 'Discord Rich Presence', description: 'Show what you are reading on Discord', keywords: ['discord', 'rpc', 'presence', 'status', 'tracking'] },
+    { id: 'discord-nsfw', category: 'discord', label: 'Hide NSFW from Discord', description: 'Do not show NSFW titles on Discord status', keywords: ['discord', 'nsfw', 'hide', 'privacy'] },
+    { id: 'discord-strict', category: 'discord', label: 'Strict NSFW Detection', description: 'Treat all content from NSFW extensions as NSFW', keywords: ['discord', 'nsfw', 'strict', 'extension'] },
     { id: 'debug-log', category: 'advanced', label: 'Create Debug Log', description: 'Generate log file for troubleshooting', keywords: ['debug', 'log', 'error', 'support'] },
     { id: 'developer-mode', category: 'advanced', label: 'Developer Mode', description: 'Enable advanced features like extension sideloading', keywords: ['developer', 'dev', 'sideload', 'extension'] },
 ];
@@ -105,8 +114,10 @@ function Settings() {
     const {
         theme, defaultReaderMode, prefetchChapters, maxCacheSize,
         hideNsfwInLibrary, hideNsfwInHistory, hideNsfwInTags, hideNsfwCompletely, developerMode,
+        discordRpcEnabled, discordRpcHideNsfw, discordRpcStrictNsfw,
         setTheme, setDefaultReaderMode, setPrefetchChapters, setMaxCacheSize,
         setHideNsfwInLibrary, setHideNsfwInHistory, setHideNsfwInTags, setHideNsfwCompletely, setDeveloperMode,
+        setDiscordRpcEnabled, setDiscordRpcHideNsfw, setDiscordRpcStrictNsfw,
     } = useSettingsStore();
 
     // Fuzzy search filter
@@ -369,6 +380,70 @@ function Settings() {
         </section>
     );
 
+    const renderDiscordSettings = () => (
+        <section className="settings-section" data-category="discord">
+            <h2 className="section-title">Discord</h2>
+            {shouldShow('discord') && (
+                <div className="setting-item">
+                    <div className="setting-info">
+                        <label className="setting-label">Discord Rich Presence</label>
+                        <span className="setting-description">Show your current reading activity on your Discord profile</span>
+                    </div>
+                    <div className="setting-control">
+                        <label className="checkbox-switch">
+                            <input
+                                type="checkbox"
+                                checked={discordRpcEnabled}
+                                onChange={(e) => setDiscordRpcEnabled(e.target.checked)}
+                            />
+                            <span className="checkbox-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            )}
+            <div className={`sub-settings ${!discordRpcEnabled ? 'disabled' : ''}`}>
+                {shouldShow('discord-nsfw') && (
+                    <div className="setting-item sub-item">
+                        <div className="setting-info">
+                            <label className="setting-label">Hide NSFW from Discord</label>
+                            <span className="setting-description">If enabled, NSFW manga will not be shown on your status (privacy mode)</span>
+                        </div>
+                        <div className="setting-control">
+                            <label className="checkbox-switch">
+                                <input
+                                    type="checkbox"
+                                    checked={discordRpcHideNsfw}
+                                    disabled={!discordRpcEnabled}
+                                    onChange={(e) => setDiscordRpcHideNsfw(e.target.checked)}
+                                />
+                                <span className="checkbox-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                )}
+                {shouldShow('discord-strict') && (
+                    <div className="setting-item sub-item">
+                        <div className="setting-info">
+                            <label className="setting-label">Strict NSFW Detection</label>
+                            <span className="setting-description">Treat all content from NSFW extensions (e.g. HentaiForce) as NSFW, even if not explicitly tagged</span>
+                        </div>
+                        <div className="setting-control">
+                            <label className="checkbox-switch">
+                                <input
+                                    type="checkbox"
+                                    checked={discordRpcStrictNsfw}
+                                    disabled={!discordRpcEnabled || !discordRpcHideNsfw}
+                                    onChange={(e) => setDiscordRpcStrictNsfw(e.target.checked)}
+                                />
+                                <span className="checkbox-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </section>
+    );
+
     const renderAdvancedSettings = () => (
         <section className="settings-section" data-category="advanced">
             <h2 className="section-title">Advanced</h2>
@@ -416,6 +491,7 @@ function Settings() {
         reader: renderReaderSettings,
         cache: renderCacheSettings,
         tracking: renderTrackingSettings,
+        discord: renderDiscordSettings,
         advanced: renderAdvancedSettings,
     };
 

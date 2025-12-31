@@ -18,7 +18,7 @@ export default defineConfig({
                     build: {
                         outDir: 'dist-electron',
                         rollupOptions: {
-                            external: ['jsdom', 'sql.js']
+                            external: ['jsdom', 'sql.js', 'bufferutil', 'utf-8-validate']
                         }
                     }
                 }
@@ -30,7 +30,10 @@ export default defineConfig({
                 },
                 vite: {
                     build: {
-                        outDir: 'dist-electron'
+                        outDir: 'dist-electron',
+                        rollupOptions: {
+                            external: ['bufferutil', 'utf-8-validate']
+                        }
                     }
                 }
             }

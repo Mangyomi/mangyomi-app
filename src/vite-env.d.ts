@@ -92,5 +92,9 @@ interface Window {
             setTokenData: (data: string) => Promise<void>;
         };
         getProxiedImageUrl: (url: string, extensionId: string) => string;
+        discord: {
+            updateActivity: (details: string, state: string, largeImageKey?: string, largeImageText?: string, smallImageKey?: string, smallImageText?: string, buttons?: { label: string; url: string }[]) => Promise<void>;
+            clearActivity: () => Promise<void>;
+        };
     };
 }

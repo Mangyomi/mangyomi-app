@@ -13,6 +13,9 @@ interface SettingsState {
     hideNsfwInHistory: boolean;
     hideNsfwInTags: boolean;
     hideNsfwCompletely: boolean;
+    discordRpcEnabled: boolean;
+    discordRpcHideNsfw: boolean;
+    discordRpcStrictNsfw: boolean;
     developerMode: boolean;
     setTheme: (theme: Theme) => void;
     setDefaultReaderMode: (mode: ReaderMode) => void;
@@ -24,6 +27,9 @@ interface SettingsState {
     setHideNsfwInHistory: (value: boolean) => void;
     setHideNsfwInTags: (value: boolean) => void;
     setHideNsfwCompletely: (value: boolean) => void;
+    setDiscordRpcEnabled: (value: boolean) => void;
+    setDiscordRpcHideNsfw: (value: boolean) => void;
+    setDiscordRpcStrictNsfw: (value: boolean) => void;
     setDeveloperMode: (value: boolean) => void;
     loadSettings: () => void;
 }
@@ -75,6 +81,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     hideNsfwInHistory: false,
     hideNsfwInTags: false,
     hideNsfwCompletely: false,
+    discordRpcEnabled: true,
+    discordRpcHideNsfw: true,
+    discordRpcStrictNsfw: true,
     developerMode: false,
 
     setTheme: (theme) => {
@@ -141,6 +150,24 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         saveToStorage({ developerMode: value } as any);
     },
 
+    setDiscordRpcEnabled: (value) => {
+        set({ discordRpcEnabled: value });
+        saveToStorage({ discordRpcEnabled: value } as any);
+        if (!value) {
+            window.electronAPI.discord.clearActivity();
+        }
+    },
+
+    setDiscordRpcHideNsfw: (value) => {
+        set({ discordRpcHideNsfw: value });
+        saveToStorage({ discordRpcHideNsfw: value } as any);
+    },
+
+    setDiscordRpcStrictNsfw: (value) => {
+        set({ discordRpcStrictNsfw: value });
+        saveToStorage({ discordRpcStrictNsfw: value } as any);
+    },
+
     loadSettings: () => {
         const stored = loadFromStorage();
         if (stored.theme) {
@@ -176,6 +203,15 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         }
         if ((stored as any).hideNsfwCompletely !== undefined) {
             set({ hideNsfwCompletely: (stored as any).hideNsfwCompletely });
+        }
+        if ((stored as any).discordRpcEnabled !== undefined) {
+            set({ discordRpcEnabled: (stored as any).discordRpcEnabled });
+        }
+        if ((stored as any).discordRpcHideNsfw !== undefined) {
+            set({ discordRpcHideNsfw: (stored as any).discordRpcHideNsfw });
+        }
+        if ((stored as any).discordRpcStrictNsfw !== undefined) {
+            set({ discordRpcStrictNsfw: (stored as any).discordRpcStrictNsfw });
         }
         if ((stored as any).developerMode !== undefined) {
             set({ developerMode: (stored as any).developerMode });
