@@ -230,7 +230,7 @@ function setupImageProxy() {
     });
 }
 
-function setupIpcHandlers() {
+function setupIpcHandlers(extensionsPath: string) {
     const db = getDatabase();
 
     ipcMain.handle('db:getManga', async (_, id: string) => {
@@ -544,8 +544,6 @@ function setupIpcHandlers() {
         return ext.getChapterPages(chapterId);
     });
 
-    const extensionsPath = path.join(__dirname, '../extensions');
-
     ipcMain.handle('ext:listAvailable', async (_, repoUrl: string) => {
         try {
             const available = await listAvailableExtensions(repoUrl);
@@ -662,12 +660,16 @@ app.whenReady().then(async () => {
     const dbPath = path.join(app.getPath('userData'), 'mangyomi.db');
     await initDatabase(dbPath);
 
-    const extensionsPath = path.join(__dirname, '../extensions');
+    const isDev = process.env.NODE_ENV === 'development' || process.env.VITE_DEV_SERVER_URL;
+    const extensionsPath = isDev
+        ? path.join(__dirname, '../extensions')
+        : path.join(app.getPath('userData'), 'extensions');
+
     await loadExtensions(extensionsPath);
 
     setupImageProxy();
 
-    setupIpcHandlers();
+    setupIpcHandlers(extensionsPath);
 
     createWindow();
 

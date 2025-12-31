@@ -1,11 +1,50 @@
 import path from 'path';
 import fs from 'fs';
-import { createRequire } from 'module';
+import vm from 'node:vm';
+import { createRequire } from 'node:module';
 import type { MangaExtension, ExtensionManifest } from './types';
 
-const require = createRequire(import.meta.url);
+const appRequire = createRequire(import.meta.url);
 
 const extensions: Map<string, MangaExtension> = new Map();
+
+// Helper to load extension in a sandboxed-like environment with injected dependencies
+function loadExtensionModule(indexPath: string) {
+    const code = fs.readFileSync(indexPath, 'utf-8');
+
+    // Create a custom require function that intercepts 'jsdom'
+    const customRequire = (id: string) => {
+        if (id === 'jsdom') {
+            // Dynamically require jsdom using the app's require context
+            return appRequire('jsdom');
+        }
+        // Allows the extension to require standard node modules if needed, 
+        // though typically they should be self-contained or use injected deps.
+        // We resolve relative to the extension file.
+        const extRequire = createRequire(indexPath);
+        return extRequire(id);
+    };
+
+    // Create a mock module context
+    const module = { exports: {} };
+    const exports = module.exports;
+    const __filename = indexPath;
+    const __dirname = path.dirname(indexPath);
+
+    // Wrap the code in a function similar to Node's internal module wrapper
+    const wrapper = `(function (exports, require, module, __filename, __dirname) { ${code} \n});`;
+
+    const script = new vm.Script(wrapper, {
+        filename: indexPath,
+    });
+
+    const compiledWrapper = script.runInThisContext();
+
+    // Execute the wrapper with our custom context
+    compiledWrapper.call(module.exports, exports, customRequire, module, __filename, __dirname);
+
+    return module.exports;
+}
 
 export async function loadExtensions(extensionsPath: string): Promise<void> {
     if (!fs.existsSync(extensionsPath)) {
@@ -32,7 +71,8 @@ export async function loadExtensions(extensionsPath: string): Promise<void> {
             const manifestContent = fs.readFileSync(manifestPath, 'utf-8');
             const manifest: ExtensionManifest = JSON.parse(manifestContent);
 
-            const extModule = require(indexPath);
+            // Use our custom loader instead of standard require
+            const extModule: any = loadExtensionModule(indexPath);
 
             const extension: MangaExtension = {
                 ...manifest,
@@ -75,16 +115,9 @@ export function unloadExtension(id: string): boolean {
     return true;
 }
 
-export function clearRequireCache(extensionsPath: string): void {
-    Object.keys(require.cache).forEach(key => {
-        if (key.includes(extensionsPath.replace(/\\/g, '/'))) {
-            delete require.cache[key];
-        }
-    });
-}
-
+// wrap in async
 export async function reloadExtensions(extensionsPath: string): Promise<void> {
     extensions.clear();
-    clearRequireCache(extensionsPath);
+    // No need to clear require cache as we are reading file content manually
     await loadExtensions(extensionsPath);
 }

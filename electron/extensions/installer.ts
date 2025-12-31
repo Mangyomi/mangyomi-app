@@ -91,19 +91,24 @@ function findExtensionFolders(extractedPath: string): string[] {
     const scanDir = (dir: string, depth: number = 0) => {
         if (depth > 2) return;
 
-        const items = fs.readdirSync(dir, { withFileTypes: true });
+        try {
+            const items = fs.readdirSync(dir, { withFileTypes: true });
 
-        const hasManifest = items.some(i => i.name === 'manifest.json' && i.isFile());
-        const hasIndex = items.some(i => i.name === 'index.js' && i.isFile());
+            const hasManifest = items.some(i => i.name === 'manifest.json' && i.isFile());
+            const hasIndex = items.some(i => i.name === 'index.js' && i.isFile());
 
-        if (hasManifest && hasIndex) {
-            extensionFolders.push(dir);
-        } else {
-            for (const item of items) {
-                if (item.isDirectory() && !item.name.startsWith('.') && item.name !== 'node_modules') {
-                    scanDir(path.join(dir, item.name), depth + 1);
+            if (hasManifest && hasIndex) {
+                extensionFolders.push(dir);
+            } else {
+                for (const item of items) {
+                    if (item.isDirectory() && !item.name.startsWith('.') && item.name !== 'node_modules') {
+                        scanDir(path.join(dir, item.name), depth + 1);
+                    }
                 }
             }
+        } catch (error) {
+            // Ignore ENOTDIR and other access errors
+            // console.warn(`Skipping scan of ${dir}:`, error);
         }
     };
 
