@@ -1,6 +1,6 @@
 {
   "name": "mangyomi",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A Tachiyomi-style manga reader desktop application",
   "main": "dist-electron/main.js",
   "scripts": {
