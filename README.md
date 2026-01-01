@@ -73,6 +73,8 @@ Mangyomi integrates with Discord to display your reading status:
   - **Incognito**: Toggle RPC on/off globally.
 - **Interactive**: Buttons to view the manga on AniList or viewing the project on GitHub.
 
+![Discord RPC](./docs/manga_settings_discord.png)
+
 ## 📉 Tracking (AniList)
 
 Sync your reading progress automatically:
@@ -80,6 +82,8 @@ Sync your reading progress automatically:
 - **Two-way Sync**: Updates your AniList profile as you read.
 - **Status Updates**: Automatically changes status to "Reading" or "Completed".
 - **Score Tracking**: Update your score directly from the app (Work in Progress).
+
+![AniList Tracking](./docs/manga_anilist_tracking.png)
 
 ## Getting Started
 

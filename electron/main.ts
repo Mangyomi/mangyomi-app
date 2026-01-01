@@ -63,7 +63,7 @@ console.error = (...args) => { captureLog('ERROR', args); originalConsole.error(
 import { imageCache } from './cache/imageCache';
 
 // Test log to verify capture is working
-console.log('[Mangyomi] Debug log capture initialized');
+
 
 function getFormattedMainLogs(): string {
     if (mainProcessLogs.length === 0) return 'No main process logs captured.';

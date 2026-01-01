@@ -39,8 +39,10 @@ Customize theme, reader mode, prefetch behavior, and debug options.
 
 | General | Library |
 | :---: | :---: |
-| ![General](./docs/manga_settings_one.png) | ![Library](./docs/manga_settings_two.png) |
+| ![General](./docs/manga_settings_general.png) | ![Library](./docs/manga_settings_library.png) |
 | **Reader** | **Storage** |
-| ![Reader](./docs/manga_settings_three.png) | ![Storage](./docs/manga_settings_four.png) |
-| **Discord** | **Advanced** |
-| ![Discord](./docs/manga_settings_five.png) | ![Advanced](./docs/manga_settings_six.png) |
+| ![Reader](./docs/manga_settings_reader.png) | ![Storage](./docs/manga_settings_storage.png) |
+| **Tracking** | **Discord** |
+| ![Tracking](./docs/manga_settings_tracking.png) | ![Discord](./docs/manga_settings_discord.png) |
+| **Advanced** | |
+| ![Advanced](./docs/manga_settings_advanced.png) | |

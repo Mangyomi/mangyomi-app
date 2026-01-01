@@ -629,7 +629,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         // Fire-and-forget async operation
         (async () => {
             try {
-                console.log('Prefetching chapter:', chapterId);
+
                 const pages = await window.electronAPI.extensions.getChapterPages(extensionId, chapterId);
 
                 // Store pages immediately
