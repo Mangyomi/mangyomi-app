@@ -222,12 +222,15 @@
     color: var(--color-text-muted);
 }
 
-.chapter-info {
+.detail-chapter-info {
     display: flex;
+    flex-direction: row;
     align-items: center;
-    gap: var(--spacing-md);
+    justify-content: flex-start;
+    gap: 8px;
+    /* Reduced from var(--spacing-md) */
     flex: 1;
-    /* Allow info to take space */
+    text-align: left;
 }
 
 /* Actions */
@@ -260,13 +263,15 @@
 }
 
 .chapter-number {
-    font-weight: 600;
+    font-weight: 500;
     color: var(--color-accent);
     min-width: 60px;
+    /* Adjusted to 60px based on feedback */
 }
 
 .chapter-title {
     color: var(--color-text-primary);
+    font-weight: 500;
 }
 
 .chapter-date {

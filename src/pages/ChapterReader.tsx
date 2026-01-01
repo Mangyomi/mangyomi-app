@@ -40,6 +40,39 @@ function ChapterReader() {
     const [zoomLevel, setZoomLevel] = useState(1);
     const containerRef = useRef<HTMLDivElement>(null);
 
+    const [showChapterSelect, setShowChapterSelect] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setShowChapterSelect(false);
+            }
+        };
+
+        if (showChapterSelect) {
+            document.addEventListener('mousedown', handleClickOutside);
+            // Auto-scroll to active chapter
+            setTimeout(() => {
+                const activeOption = dropdownRef.current?.querySelector('.chapter-option.active');
+                if (activeOption) {
+                    activeOption.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                }
+            }, 10);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showChapterSelect]);
+
+    const handleChapterSelect = (targetChapterId: string) => {
+        setShowChapterSelect(false);
+        if (targetChapterId !== chapterId) {
+            navigate(`/read/${extensionId}/${encodeURIComponent(targetChapterId)}`);
+        }
+    };
+
     const chapterId = decodeURIComponent(chapterIdParam || '');
 
     const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.25, 3));
@@ -311,11 +344,44 @@ function ChapterReader() {
                         ←
                     </button>
 
-                    <div className="reader-title">
-                        <span className="chapter-name">{currentChapters.find(c => c.id === chapterId)?.title || `Chapter ${chapterId.split('/').pop()?.replace('chapter-', '')}`}</span>
-                        <span className="page-indicator">
-                            {currentPageIndex + 1} / {currentPages.length}
-                        </span>
+                    <div className="reader-title-container" ref={dropdownRef}>
+                        <button
+                            className={`chapter-select-btn ${showChapterSelect ? 'active' : ''}`}
+                            onClick={() => setShowChapterSelect(!showChapterSelect)}
+                        >
+                            <span className="chapter-name">
+                                {currentChapters.find(c => c.id === chapterId)?.title || `Chapter ${chapterId.split('/').pop()?.replace('chapter-', '')}`}
+                            </span>
+                            <span className="dropdown-caret">▼</span>
+                        </button>
+
+                        {showChapterSelect && (
+                            <div className="chapter-dropdown">
+                                <div className="chapter-dropdown-header">
+                                    <span>Select Chapter</span>
+                                    <span className="chapter-count">{currentChapters.length} chapters</span>
+                                </div>
+                                <div className="chapter-list">
+                                    {currentChapters.map((chapter) => (
+                                        <div
+                                            key={chapter.id}
+                                            className={`chapter-option ${chapter.id === chapterId ? 'active' : ''}`}
+                                            onClick={() => handleChapterSelect(chapter.id)}
+                                        >
+                                            <div className="chapter-info">
+                                                <span className="chapter-option-title">{chapter.title}</span>
+                                                {chapter.uploadDate && (
+                                                    <span className="chapter-date">
+                                                        {new Date(chapter.uploadDate).toLocaleDateString()}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {!!chapter.read_at && <span className="chapter-read-indicator">Read</span>}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="reader-nav-actions">

@@ -351,7 +351,7 @@ function MangaDetail() {
                             className={`chapter-item ${chapter.read_at ? 'read' : ''}`}
                             onClick={() => handleReadChapter(chapter.id)}
                         >
-                            <div className="chapter-info">
+                            <div className="detail-chapter-info">
                                 <span className="chapter-number">Ch. {chapter.chapterNumber}</span>
                                 <span className="chapter-title">{chapter.title}</span>
                             </div>
