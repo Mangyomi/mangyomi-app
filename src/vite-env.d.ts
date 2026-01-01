@@ -69,12 +69,15 @@ interface Window {
         };
         app: {
             createDumpLog: (consoleLogs: string, networkActivity: string) => Promise<{ success: boolean; path: string }>;
+            openExternal: (url: string) => Promise<void>;
+            openInAppBrowser: (url: string) => Promise<void>;
         };
         cache: {
             save: (url: string, extensionId: string, mangaId: string, chapterId: string) => Promise<string>;
             clear: (mangaId?: string) => Promise<void>;
             setLimit: (bytes: number) => Promise<void>;
             getSize: () => Promise<number>;
+            checkManga: (mangaId: string) => Promise<number>;
         };
         anilist: {
             login: () => Promise<{ success: boolean; token?: string; error?: string }>;

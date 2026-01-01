@@ -4,6 +4,18 @@ import { useSettingsStore } from '../stores/settingsStore';
 import { Icons } from '../components/Icons';
 import './Extensions.css';
 
+const isUpdateAvailable = (current: string, latest: string) => {
+    const v1 = current.split('.').map(Number);
+    const v2 = latest.split('.').map(Number);
+    for (let i = 0; i < Math.max(v1.length, v2.length); i++) {
+        const n1 = v1[i] || 0;
+        const n2 = v2[i] || 0;
+        if (n2 > n1) return true;
+        if (n2 < n1) return false;
+    }
+    return false;
+};
+
 const DEFAULT_REPO_URL = 'https://github.com/Mangyomi/mangyomi-ext';
 
 function Extensions() {
@@ -302,13 +314,45 @@ function Extensions() {
                                             </div>
                                         </div>
                                         <button
-                                            className={`install-btn ${ext.installed ? 'installed' : ''}`}
-                                            onClick={() => ext.installed ? handleUninstall(ext.id) : handleInstall(ext)}
+                                            className={`install-btn ${extensions.some(e => e.id === ext.id)
+                                                ? isUpdateAvailable(extensions.find(e => e.id === ext.id)?.version || '0.0.0', ext.version)
+                                                    ? 'update'
+                                                    : 'installed'
+                                                : ''
+                                                }`}
+                                            onClick={() => {
+                                                const installedExt = extensions.find(e => e.id === ext.id);
+                                                if (installedExt) {
+                                                    if (isUpdateAvailable(installedExt.version, ext.version)) {
+                                                        handleInstall(ext);
+                                                    } else {
+                                                        handleUninstall(ext.id);
+                                                    }
+                                                } else {
+                                                    handleInstall(ext);
+                                                }
+                                            }}
                                             disabled={installingIds.has(ext.id) || uninstallingIds.has(ext.id)}
                                         >
-                                            {installingIds.has(ext.id) ? <Icons.Refresh width={14} height={14} className="animate-spin" /> :
-                                                uninstallingIds.has(ext.id) ? <Icons.Refresh width={14} height={14} className="animate-spin" /> :
-                                                    ext.installed ? <><Icons.Check width={14} height={14} style={{ marginRight: '4px' }} /> Installed</> : <><Icons.Plus width={14} height={14} style={{ marginRight: '4px' }} /> Install</>}
+                                            {installingIds.has(ext.id) ? (
+                                                <Icons.Refresh width={14} height={14} className="animate-spin" />
+                                            ) : uninstallingIds.has(ext.id) ? (
+                                                <Icons.Refresh width={14} height={14} className="animate-spin" />
+                                            ) : extensions.some(e => e.id === ext.id) ? (
+                                                isUpdateAvailable(extensions.find(e => e.id === ext.id)?.version || '0.0.0', ext.version) ? (
+                                                    <>
+                                                        <Icons.Download width={14} height={14} style={{ marginRight: '4px' }} /> Update
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Icons.Check width={14} height={14} style={{ marginRight: '4px' }} /> Installed
+                                                    </>
+                                                )
+                                            ) : (
+                                                <>
+                                                    <Icons.Plus width={14} height={14} style={{ marginRight: '4px' }} /> Install
+                                                </>
+                                            )}
                                         </button>
                                     </div>
                                 ))}

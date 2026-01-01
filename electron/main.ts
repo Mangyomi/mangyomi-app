@@ -141,6 +141,26 @@ function createWindow() {
         mainWindow?.close();
     });
 
+    ipcMain.handle('app:openExternal', async (_, url: string) => {
+        const { shell } = require('electron');
+        await shell.openExternal(url);
+    });
+
+    ipcMain.handle('app:openInAppBrowser', async (_, url: string) => {
+        const win = new BrowserWindow({
+            width: 1200,
+            height: 800,
+            webPreferences: {
+                nodeIntegration: false,
+                contextIsolation: true,
+                session: mainWindow?.webContents.session // Share session/cookies
+            },
+            autoHideMenuBar: true,
+            title: 'Manga Browser'
+        });
+        win.loadURL(url);
+    });
+
     mainWindow.once('ready-to-show', () => {
         mainWindow?.show();
     });
@@ -657,6 +677,12 @@ function setupIpcHandlers(extensionsPath: string) {
 
     ipcMain.handle('cache:getSize', async () => {
         return imageCache.getCacheSize();
+    });
+
+    ipcMain.handle('cache:checkManga', async (_, mangaId: string) => {
+        const db = getDatabase();
+        const result = db.prepare('SELECT COUNT(DISTINCT chapter_id) as count FROM image_cache WHERE manga_id = ?').get(mangaId) as { count: number };
+        return result?.count || 0;
     });
 
     ipcMain.handle('app:createDumpLog', async (_, consoleLogs: string, networkActivity: string) => {

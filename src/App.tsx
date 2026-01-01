@@ -15,6 +15,7 @@ import Settings from './pages/Settings';
 import MangaDetail from './pages/MangaDetail';
 import ChapterReader from './pages/ChapterReader';
 import TitleBar from './components/Layout/TitleBar';
+import PrefetchOverlay from './components/PrefetchOverlay';
 import './App.css';
 
 function App() {
@@ -69,6 +70,9 @@ function App() {
                         </Routes>
                     </main>
                 </div>
+
+                {/* Global Prefetch Overlay */}
+                <PrefetchOverlay />
 
                 {/* Global Captcha Modal */}
                 {captchaUrl && (

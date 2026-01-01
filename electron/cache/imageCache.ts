@@ -44,7 +44,11 @@ class ImageCache {
                 if (entry.isDirectory()) {
                     walkDir(fullPath);
                 } else {
-                    totalSize += fs.statSync(fullPath).size;
+                    try {
+                        totalSize += fs.statSync(fullPath).size;
+                    } catch (e) {
+                        // File might be deleted during walk (race condition), ignore
+                    }
                 }
             }
         };
@@ -147,9 +151,22 @@ class ImageCache {
         }
     }
 
+    private pruneTimeout: NodeJS.Timeout | null = null;
+
+    private schedulePrune() {
+        if (this.pruneTimeout) {
+            clearTimeout(this.pruneTimeout);
+        }
+        // Debounce pruning to 5 seconds after last write to avoid stalling downloads
+        this.pruneTimeout = setTimeout(() => {
+            this.prune();
+        }, 5000);
+    }
+
     private async prune() {
         if (this.isPruning) return;
         this.isPruning = true;
+        this.pruneTimeout = null;
 
         try {
             const db = getDatabase();
@@ -174,7 +191,7 @@ class ImageCache {
 
                 const filePath = path.join(this.cacheDir, row.hash);
                 if (fs.existsSync(filePath)) {
-                    fs.unlinkSync(filePath);
+                    try { fs.unlinkSync(filePath); } catch (e) { }
                 }
 
                 db.prepare('DELETE FROM image_cache WHERE url = ?').run(row.url);
@@ -197,63 +214,86 @@ class ImageCache {
         }
     }
 
+    private pendingRequests: Map<string, Promise<string>> = new Map();
+
     async saveToCache(url: string, headers: Record<string, string>, mangaId: string, chapterId: string): Promise<string> {
         if (!this.initialized) this.init();
 
-        const hash = crypto.createHash('sha256').update(url).digest('hex');
-        const filePath = path.join(this.cacheDir, hash);
-        const db = getDatabase();
-
-        // 1. Check if already cached
-        if (fs.existsSync(filePath)) {
+        // Check if there's already a pending request for this URL
+        if (this.pendingRequests.has(url)) {
             try {
-                // Update registry to link this image to this chapter (if not already)
-                // and update timestamp
+                return await this.pendingRequests.get(url)!;
+            } catch (e) {
+                // If the pending request failed, we'll try again below
+                this.pendingRequests.delete(url);
+            }
+        }
+
+        const requestPromise = (async () => {
+            const hash = crypto.createHash('sha256').update(url).digest('hex');
+            const filePath = path.join(this.cacheDir, hash);
+            const db = getDatabase();
+
+            // 1. Check if already cached
+            if (fs.existsSync(filePath)) {
+                try {
+                    // Update registry to link this image to this chapter (if not already)
+                    // and update timestamp
+                    db.prepare(`
+                        INSERT INTO image_cache (url, hash, manga_id, chapter_id, size, cached_at)
+                        VALUES (@url, @hash, @manga_id, @chapter_id, @size, strftime('%s', 'now'))
+                        ON CONFLICT(url) DO UPDATE SET
+                        cached_at = strftime('%s', 'now')
+                    `).run({
+                        '@url': url,
+                        '@hash': hash,
+                        '@manga_id': mangaId,
+                        '@chapter_id': chapterId,
+                        '@size': fs.statSync(filePath).size
+                    });
+                } catch (e) { console.error('Cache DB update failed', e); }
+                return filePath;
+            }
+
+            // 2. Download
+            try {
+                const response = await net.fetch(url, { headers });
+                if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+
+                const buffer = await response.arrayBuffer();
+                const data = new Uint8Array(buffer);
+
+                await fs.promises.writeFile(filePath, data);
+
+                // 3. Register in DB
                 db.prepare(`
-                    INSERT INTO image_cache (url, hash, manga_id, chapter_id, size, cached_at)
+                    INSERT OR REPLACE INTO image_cache (url, hash, manga_id, chapter_id, size, cached_at)
                     VALUES (@url, @hash, @manga_id, @chapter_id, @size, strftime('%s', 'now'))
-                    ON CONFLICT(url) DO UPDATE SET
-                    cached_at = strftime('%s', 'now')
                 `).run({
                     '@url': url,
                     '@hash': hash,
                     '@manga_id': mangaId,
                     '@chapter_id': chapterId,
-                    '@size': fs.statSync(filePath).size
+                    '@size': data.length
                 });
-            } catch (e) { console.error('Cache DB update failed', e); }
-            return filePath;
-        }
 
-        // 2. Download
+                // 4. Prune Check
+                this.schedulePrune();
+
+                return filePath;
+            } catch (error) {
+                console.error('Failed to cache image:', url, error);
+                throw error;
+            }
+        })();
+
+        this.pendingRequests.set(url, requestPromise);
+
         try {
-            const response = await net.fetch(url, { headers });
-            if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
-
-            const buffer = await response.arrayBuffer();
-            const data = new Uint8Array(buffer);
-
-            await fs.promises.writeFile(filePath, data);
-
-            // 3. Register in DB
-            db.prepare(`
-                INSERT OR REPLACE INTO image_cache (url, hash, manga_id, chapter_id, size, cached_at)
-                VALUES (@url, @hash, @manga_id, @chapter_id, @size, strftime('%s', 'now'))
-            `).run({
-                '@url': url,
-                '@hash': hash,
-                '@manga_id': mangaId,
-                '@chapter_id': chapterId,
-                '@size': data.length
-            });
-
-            // 4. Prune Check
-            this.prune();
-
-            return filePath;
-        } catch (error) {
-            console.error('Failed to cache image:', url, error);
-            throw error;
+            const result = await requestPromise;
+            return result;
+        } finally {
+            this.pendingRequests.delete(url);
         }
     }
 

@@ -270,6 +270,10 @@ body {
   }
 }
 
+.spin {
+  animation: spin 1s linear infinite;
+}
+
 /* Utilities */
 .text-center {
   text-align: center;

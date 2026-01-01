@@ -1,10 +1,10 @@
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import './ConfirmModal.css';
 
 interface ConfirmModalProps {
     isOpen: boolean;
     title?: string;
-    message: string;
+    message: React.ReactNode;
     confirmLabel?: string;
     cancelLabel?: string;
     onConfirm: () => void;
@@ -56,7 +56,7 @@ function ConfirmModal({
                     <h3>{title}</h3>
                 </div>
                 <div className="confirm-content">
-                    <p className="confirm-message">{message}</p>
+                    <div className="confirm-message">{message}</div>
                 </div>
                 <div className="confirm-actions">
                     {!isAlert && (

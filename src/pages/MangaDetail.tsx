@@ -3,11 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../stores/appStore';
 import { useAniListStore } from '../stores/anilistStore';
 import { useDialog } from '../components/ConfirmModal/DialogContext';
+import { useRef } from 'react';
+import { useSettingsStore } from '../stores/settingsStore';
 import './MangaDetail.css';
 
 import TagSelector from '../components/TagSelector';
 import AniListLinkModal from '../components/AniListLinkModal/AniListLinkModal';
 import { Icons } from '../components/Icons';
+import Tooltip from '../components/Tooltip';
 
 function MangaDetail() {
     const { extensionId, mangaId } = useParams<{ extensionId: string; mangaId: string }>();
@@ -29,6 +32,79 @@ function MangaDetail() {
     const [mangaTags, setMangaTags] = useState<any[]>([]);
     const [isAniListModalOpen, setIsAniListModalOpen] = useState(false);
     const [anilistId, setAnilistId] = useState<number | null>(null);
+    const [isWebViewModalOpen, setIsWebViewModalOpen] = useState(false);
+
+    // Global Prefetch State
+    const { isPrefetching, prefetchMangaId, startPrefetch } = useAppStore();
+
+    const [cachedChaptersCount, setCachedChaptersCount] = useState(0);
+
+    // Deduplicate chapters based on ID to avoid false mismatches
+    const uniqueChapters = Array.from(new Map(currentChapters.map(c => [c.id, c])).values());
+
+    const checkCacheStatus = async () => {
+        if (!mangaId) return;
+        try {
+            const count = await window.electronAPI.cache.checkManga(decodeURIComponent(mangaId));
+            setCachedChaptersCount(count);
+        } catch (e) {
+            console.error('Failed to check cache status', e);
+        }
+    };
+
+    useEffect(() => {
+        checkCacheStatus();
+    }, [mangaId, isPrefetching]);
+
+    const handlePrefetchAll = async () => {
+        if (!extensionId || !mangaId || !uniqueChapters.length) return;
+
+        const isRefresh = cachedChaptersCount >= uniqueChapters.length;
+        const isLargeBatch = uniqueChapters.length > 500;
+
+        let message: React.ReactNode = isRefresh
+            ? 'This will delete existing cache and re-download all chapters. This may take a while.\n\nThe process will automatically stop if your defined Cache Limit is reached.'
+            : 'This will download all images for all chapters to your local cache. This may take a while and use significant disk space.\n\nThe process will automatically stop if your defined Cache Limit is reached.';
+
+        if (isLargeBatch) {
+            message = (
+                <div>
+                    <div style={{ whiteSpace: 'pre-line' }}>{message}</div>
+                    <div style={{
+                        marginTop: '16px',
+                        padding: '12px',
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        border: '1px solid var(--color-error)',
+                        borderRadius: '6px',
+                        color: 'var(--color-error)',
+                        fontSize: '0.9em'
+                    }}>
+                        <strong>Warning: Large Batch ({uniqueChapters.length} chapters)</strong>
+                        <br />
+                        It is not recommended to prefetch this many chapters at once. Please rely on the pre-fetch settings, which will handle reading with close to zero delay just fine.
+                    </div>
+                </div>
+            );
+        } else {
+            message = <div style={{ whiteSpace: 'pre-line' }}>{message}</div>;
+        }
+
+        const confirm = await dialog.confirm({
+            title: isRefresh ? 'Refresh All Chapters?' : 'Prefetch All Chapters?',
+            message: message,
+            confirmLabel: isRefresh ? 'Refresh Cache' : 'Start Prefetch'
+        });
+
+        if (!confirm) return;
+
+        // User asked for "prefetch entire manga" starting from first chapter.
+        // Sort ascending by chapter number
+        const chaptersToFetch = [...uniqueChapters].sort((a, b) =>
+            (a.chapterNumber || 0) - (b.chapterNumber || 0)
+        );
+        // Use decodedMangaId to ensure consistency with DB checks
+        startPrefetch(chaptersToFetch, extensionId, decodedMangaId);
+    };
 
     const { isAuthenticated: isAniListAuthenticated, syncProgress } = useAniListStore();
 
@@ -183,6 +259,32 @@ function MangaDetail() {
         await removeFromLibrary(libraryEntry.id);
     };
 
+
+
+    const handleWebViewClick = () => {
+        setIsWebViewModalOpen(true);
+    };
+
+    const confirmWebView = async (mode: 'external' | 'internal') => {
+        setIsWebViewModalOpen(false);
+        if (!currentManga) return;
+        const url = (currentManga as any).url;
+        if (!url) {
+            dialog.alert('No URL available for this manga');
+            return;
+        }
+
+        try {
+            if (mode === 'external') {
+                await window.electronAPI.app.openExternal(url);
+            } else {
+                await window.electronAPI.app.openInAppBrowser(url);
+            }
+        } catch (e) {
+            console.error('Failed to open link', e);
+        }
+    };
+
     const handleReadChapter = (chapterId: string) => {
         navigate(`/read/${extensionId}/${encodeURIComponent(chapterId)}`);
     };
@@ -211,11 +313,62 @@ function MangaDetail() {
         ? window.electronAPI.getProxiedImageUrl(currentManga.coverUrl, extensionId!)
         : currentManga.coverUrl;
 
+
+
     return (
         <div className="manga-detail-page">
             {/* Hero Section */}
-            <div className="manga-hero">
+            <div className="manga-hero" style={{ position: 'relative' }}>
                 <div className="manga-hero-bg" style={{ backgroundImage: `url(${proxiedCoverUrl})` }} />
+
+                {/* WebView Button */}
+                <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 10 }}>
+                    <Tooltip content="Open in Webview">
+                        <button
+                            className="btn-icon"
+                            onClick={handleWebViewClick}
+                            style={{
+                                background: 'transparent',
+                                borderRadius: '50%',
+                                width: '40px',
+                                height: '40px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'white'
+                            }}
+                        >
+                            <Icons.Globe width={20} height={20} />
+                        </button>
+                    </Tooltip>
+                </div>
+
+
+
+                {/* WebView Choice Modal */}
+                {isWebViewModalOpen && (
+                    <div className="confirm-modal-overlay" onClick={() => setIsWebViewModalOpen(false)}>
+                        <div className="confirm-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+                            <div className="confirm-header">
+                                <h3>Open Manga</h3>
+                            </div>
+                            <div className="confirm-content">
+                                <p>Where would you like to view this manga?</p>
+                            </div>
+                            <div className="confirm-actions" style={{ flexDirection: 'column', gap: '8px' }}>
+                                <button className="btn btn-secondary w-full" onClick={() => confirmWebView('internal')} style={{ width: '100%', justifyContent: 'center' }}>
+                                    Open in App Browser
+                                </button>
+                                <button className="btn btn-primary w-full" onClick={() => confirmWebView('external')} style={{ width: '100%', justifyContent: 'center' }}>
+                                    Open in Default Browser
+                                </button>
+                                <button className="btn btn-ghost w-full" onClick={() => setIsWebViewModalOpen(false)} style={{ width: '100%', justifyContent: 'center', marginTop: '4px' }}>
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <div className="manga-hero-content">
                     <img src={proxiedCoverUrl} alt={currentManga.title} className="manga-cover" />
@@ -270,13 +423,14 @@ function MangaDetail() {
                                     <button className="btn btn-secondary" onClick={() => setIsTagSelectorOpen(true)}>
                                         <Icons.Tag width={16} height={16} style={{ marginRight: '6px' }} /> Tags
                                     </button>
-                                    <button
-                                        className={`btn ${anilistId ? 'btn-anilist-linked' : 'btn-secondary'}`}
-                                        onClick={() => setIsAniListModalOpen(true)}
-                                        title={anilistId ? `Linked to AniList (ID: ${anilistId})` : 'Track on AniList'}
-                                    >
-                                        <Icons.Chart width={16} height={16} style={{ marginRight: '6px' }} /> {anilistId ? 'Tracking' : 'Track'}
-                                    </button>
+                                    <Tooltip content={anilistId ? `Linked to AniList (ID: ${anilistId})` : 'Track on AniList'}>
+                                        <button
+                                            className={`btn ${anilistId ? 'btn-anilist-linked' : 'btn-secondary'}`}
+                                            onClick={() => setIsAniListModalOpen(true)}
+                                        >
+                                            <Icons.Chart width={16} height={16} style={{ marginRight: '6px' }} /> {anilistId ? 'Tracking' : 'Track'}
+                                        </button>
+                                    </Tooltip>
                                 </>
                             ) : (
                                 <button className="btn btn-primary" onClick={handleAddToLibrary}>
@@ -284,12 +438,15 @@ function MangaDetail() {
                                 </button>
                             )}
                             {currentChapters.length > 0 && (
-                                <button
-                                    className="btn btn-primary"
-                                    onClick={() => handleReadChapter(currentChapters[currentChapters.length - 1].id)}
-                                >
-                                    <Icons.Play width={18} height={18} style={{ marginRight: '6px', fill: 'currentColor' }} /> Start Reading
-                                </button>
+                                <>
+
+                                    <button
+                                        className="btn btn-primary"
+                                        onClick={() => handleReadChapter(currentChapters[currentChapters.length - 1].id)}
+                                    >
+                                        <Icons.Play width={18} height={18} style={{ marginRight: '6px', fill: 'currentColor' }} /> Start Reading
+                                    </button>
+                                </>
                             )}
                         </div>
                     </div>
@@ -317,31 +474,58 @@ function MangaDetail() {
                 )
             }
 
+
             <div className="manga-section">
                 <div className="section-header">
                     <h2 className="section-title">
                         Chapters
-                        <span className="chapter-count">({currentChapters.length})</span>
+                        <span className="chapter-count">({uniqueChapters.length})</span>
                     </h2>
                     <div className="chapter-controls">
-                        <button
-                            className="btn-icon"
-                            onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
-                            title={`Sort ${sortOrder === 'desc' ? 'Ascending' : 'Descending'}`}
-                        >
-                            {sortOrder === 'desc' ? (
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 16 4 4 4-4" /><path d="M7 20V4" /><path d="M11 5h10" /><path d="M11 9h10" /><path d="M11 13h10" /></svg>
-                            ) : (
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 8 4-4 4 4" /><path d="M7 4v16" /><path d="M11 12h10" /><path d="M11 8h10" /><path d="M11 16h10" /></svg>
-                            )}
-                        </button>
-                        <button
-                            className="btn-icon"
-                            onClick={handleMarkAllUnread}
-                            title="Mark all as unread"
-                        >
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" /><circle cx="12" cy="12" r="3" /><line x1="2" y1="2" x2="22" y2="22" /></svg>
-                        </button>
+                        {uniqueChapters.length > 0 && (() => {
+                            const isThisMangaPrefetching = isPrefetching && prefetchMangaId === decodeURIComponent(mangaId || '');
+                            return (
+                                <Tooltip
+                                    content={cachedChaptersCount >= uniqueChapters.length ? "Refresh all cached chapters" : `Prefetch all chapters (${cachedChaptersCount}/${uniqueChapters.length} cached)`}
+                                    position="top"
+                                >
+                                    <button
+                                        className="btn-icon"
+                                        onClick={handlePrefetchAll}
+                                        disabled={isPrefetching}
+                                        style={{ color: isThisMangaPrefetching ? 'var(--color-accent)' : undefined }}
+                                    >
+                                        {isThisMangaPrefetching ? (
+                                            <Icons.Loader width={20} height={20} className="spin" />
+                                        ) : cachedChaptersCount >= uniqueChapters.length ? (
+                                            <Icons.RefreshCW width={20} height={20} />
+                                        ) : (
+                                            <Icons.Download width={20} height={20} />
+                                        )}
+                                    </button>
+                                </Tooltip>
+                            );
+                        })()}
+                        <Tooltip content={`Sort ${sortOrder === 'desc' ? 'Ascending' : 'Descending'}`}>
+                            <button
+                                className="btn-icon"
+                                onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
+                            >
+                                {sortOrder === 'desc' ? (
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 16 4 4 4-4" /><path d="M7 20V4" /><path d="M11 5h10" /><path d="M11 9h10" /><path d="M11 13h10" /></svg>
+                                ) : (
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 8 4-4 4 4" /><path d="M7 4v16" /><path d="M11 12h10" /><path d="M11 8h10" /><path d="M11 16h10" /></svg>
+                                )}
+                            </button>
+                        </Tooltip>
+                        <Tooltip content="Mark all as unread">
+                            <button
+                                className="btn-icon"
+                                onClick={handleMarkAllUnread}
+                            >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" /><circle cx="12" cy="12" r="3" /><line x1="2" y1="2" x2="22" y2="22" /></svg>
+                            </button>
+                        </Tooltip>
                     </div>
                 </div>
                 <div className="chapter-list">
@@ -369,44 +553,46 @@ function MangaDetail() {
                             )}
 
                             <div className="chapter-actions">
-                                <button
-                                    className="action-icon-btn"
-                                    onClick={(e) => handleToggleRead(e, chapter)}
-                                    title={chapter.read_at ? "Mark as unread" : "Mark as read"}
-                                >
-                                    {chapter.read_at ? (
-                                        // Eye Off (Mark as Unread)
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                                            <line x1="1" y1="1" x2="23" y2="23" />
-                                        </svg>
-                                    ) : (
-                                        // Double Check (Mark as Read)
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M18 6 7 17l-5-5" />
-                                            <path d="m22 10-7.5 7.5L13 16" />
-                                        </svg>
-                                    )}
-                                </button>
-                                <button
-                                    className="action-icon-btn"
-                                    onClick={(e) => handleMarkPreviousRead(e, chapter.id)}
-                                    title={sortOrder === 'desc' ? "Mark previous (older) chapters as read" : "Mark previous (older) chapters as read"}
-                                >
-                                    {sortOrder === 'desc' ? (
-                                        // Down Arrow (Desc: Older are below)
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <line x1="12" y1="5" x2="12" y2="19" />
-                                            <polyline points="19 12 12 19 5 12" />
-                                        </svg>
-                                    ) : (
-                                        // Up Arrow (Asc: Older are above)
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <line x1="12" y1="19" x2="12" y2="5" />
-                                            <polyline points="5 12 12 5 19 12" />
-                                        </svg>
-                                    )}
-                                </button>
+                                <Tooltip content={chapter.read_at ? "Mark as unread" : "Mark as read"} position="left">
+                                    <button
+                                        className="action-icon-btn"
+                                        onClick={(e) => handleToggleRead(e, chapter)}
+                                    >
+                                        {chapter.read_at ? (
+                                            // Eye Off (Mark as Unread)
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                                                <line x1="1" y1="1" x2="23" y2="23" />
+                                            </svg>
+                                        ) : (
+                                            // Double Check (Mark as Read)
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M18 6 7 17l-5-5" />
+                                                <path d="m22 10-7.5 7.5L13 16" />
+                                            </svg>
+                                        )}
+                                    </button>
+                                </Tooltip>
+                                <Tooltip content={sortOrder === 'desc' ? "Mark previous (older) chapters as read" : "Mark previous (older) chapters as read"} position="left">
+                                    <button
+                                        className="action-icon-btn"
+                                        onClick={(e) => handleMarkPreviousRead(e, chapter.id)}
+                                    >
+                                        {sortOrder === 'desc' ? (
+                                            // Down Arrow (Desc: Older are below)
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <line x1="12" y1="5" x2="12" y2="19" />
+                                                <polyline points="19 12 12 19 5 12" />
+                                            </svg>
+                                        ) : (
+                                            // Up Arrow (Asc: Older are above)
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <line x1="12" y1="19" x2="12" y2="5" />
+                                                <polyline points="5 12 12 5 19 12" />
+                                            </svg>
+                                        )}
+                                    </button>
+                                </Tooltip>
                             </div>
                         </div>
                     ))}

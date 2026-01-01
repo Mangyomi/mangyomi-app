@@ -125,9 +125,9 @@
 }
 
 .btn-anilist-linked {
-    background: rgba(2, 169, 255, 0.2) !important;
-    border-color: #02a9ff !important;
-    color: #02a9ff !important;
+    background: rgba(138, 43, 226, 0.15) !important;
+    border-color: rgba(138, 43, 226, 0.5) !important;
+    color: #b366e0 !important;
 }
 
 /* Sections */
@@ -219,6 +219,10 @@
 }
 
 .chapter-item.read .chapter-number {
+    color: var(--color-text-muted);
+}
+
+.chapter-item.read .chapter-title {
     color: var(--color-text-muted);
 }
 

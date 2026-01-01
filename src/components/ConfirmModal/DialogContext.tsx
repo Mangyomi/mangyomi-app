@@ -3,7 +3,7 @@ import ConfirmModal from './ConfirmModal';
 
 interface DialogOptions {
     title?: string;
-    message: string;
+    message: ReactNode;
     confirmLabel?: string;
     cancelLabel?: string;
     isDestructive?: boolean;
@@ -11,7 +11,7 @@ interface DialogOptions {
 
 interface DialogContextType {
     confirm: (options: DialogOptions) => Promise<boolean>;
-    alert: (message: string, title?: string) => Promise<void>;
+    alert: (message: ReactNode, title?: string) => Promise<void>;
 }
 
 const DialogContext = createContext<DialogContextType | null>(null);
@@ -50,7 +50,7 @@ export function DialogProvider({ children }: { children: ReactNode }) {
         });
     }, []);
 
-    const alert = useCallback((message: string, title?: string): Promise<void> => {
+    const alert = useCallback((message: ReactNode, title?: string): Promise<void> => {
         return new Promise((resolve) => {
             setDialogState({
                 isOpen: true,

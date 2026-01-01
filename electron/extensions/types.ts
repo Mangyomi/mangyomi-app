@@ -21,6 +21,7 @@ export interface MangaDetails {
     description: string;
     status: 'ongoing' | 'completed' | 'hiatus' | 'unknown';
     genres: string[];
+    url?: string;
 }
 
 export interface Chapter {

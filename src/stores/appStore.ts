@@ -17,6 +17,7 @@ export interface Manga {
     total_chapters?: number;
     read_chapters?: number;
     anilist_id?: number;
+    url?: string;
 }
 
 export interface Chapter {
@@ -125,6 +126,12 @@ interface AppState {
     prefetchChapter: (extensionId: string, chapterId: string) => void;
     getPrefetchedPages: (chapterId: string) => string[] | undefined;
     clearPrefetchCache: () => void;
+    // Global Prefetch State
+    isPrefetching: boolean;
+    prefetchMangaId: string | null;
+    prefetchProgress: { current: number; total: number; chapter: string };
+    cancelPrefetch: () => void;
+    startPrefetch: (chapters: Chapter[], extensionId: string, mangaId: string) => Promise<void>;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -149,6 +156,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     captchaCallback: null,
     prefetchedChapters: new Map(),
     prefetchInProgress: new Set(),
+
+    // Global Prefetch Init
+    isPrefetching: false,
+    prefetchMangaId: null,
+    prefetchProgress: { current: 0, total: 0, chapter: '' },
+    cancelPrefetch: () => { }, // placeholder, replaced in startPrefetch
 
     loadLibrary: async () => {
         set({ loadingLibrary: true });
@@ -675,5 +688,162 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     clearPrefetchCache: () => {
         set({ prefetchedChapters: new Map() });
+    },
+
+    startPrefetch: async (chapters: Chapter[], extensionId: string, mangaId: string) => {
+        const { isPrefetching } = get();
+        if (isPrefetching) {
+            console.log('Prefetch already in progress, skipping');
+            return;
+        }
+
+        console.log('Starting prefetch for', chapters.length, 'chapters');
+        // Initialize state FIRST
+        set({
+            isPrefetching: true,
+            prefetchMangaId: mangaId,
+            prefetchProgress: { current: 0, total: chapters.length, chapter: 'Starting...' }
+        });
+
+        let cancelled = false;
+        set({
+            cancelPrefetch: () => {
+                console.log('Prefetch cancelled by user');
+                cancelled = true;
+            }
+        });
+
+        try {
+            // Import settings store
+            const { useSettingsStore } = await import('./settingsStore');
+            const maxCacheSize = useSettingsStore.getState().maxCacheSize; // Access state directly
+            // const dialog = require('@electron/remote').dialog; // Use alert for simplicity in store for now
+
+            let completed = 0;
+            for (const chapter of chapters) {
+                if (cancelled) break;
+
+                set({ prefetchProgress: { current: completed + 1, total: chapters.length, chapter: `Ch. ${chapter.chapterNumber} - ${chapter.title}` } });
+
+                try {
+
+                    // 2. Fetch Pages
+                    let pages: string[] = [];
+                    let pageFetchAttempts = 0;
+                    const maxPageFetchRetries = 3;
+                    let pagesFetched = false;
+
+                    while (pageFetchAttempts < maxPageFetchRetries && !pagesFetched && !cancelled) {
+                        pageFetchAttempts++;
+                        try {
+                            if (pageFetchAttempts > 1) console.log(`Retry fetching pages for chapter ${chapter.chapterNumber} (Attempt ${pageFetchAttempts}/${maxPageFetchRetries})`);
+
+                            pages = await Promise.race([
+                                window.electronAPI.extensions.getChapterPages(extensionId, chapter.id),
+                                new Promise<string[]>((_, reject) => setTimeout(() => reject(new Error('Timeout fetching pages')), 30000))
+                            ]);
+                            pagesFetched = true;
+                        } catch (err: any) {
+                            console.warn(`Failed to fetch pages for chapter ${chapter.chapterNumber} (Attempt ${pageFetchAttempts}):`, err.message || err);
+                            if (pageFetchAttempts === maxPageFetchRetries) {
+                                console.error(`Permanently failed to fetch pages for chapter ${chapter.id}`);
+                            } else {
+                                // Backoff: 2s, 4s, 6s...
+                                await new Promise(r => setTimeout(r, 2000 * pageFetchAttempts));
+                            }
+                        }
+                    }
+
+                    if (!pagesFetched) {
+                        console.error(`Skipping chapter ${chapter.id} (Ch. ${chapter.chapterNumber}) - failed to fetch page list after retries`);
+                        completed++;
+                        continue; // Skip this chapter if we couldn't get the page list
+                    }
+
+                    // Check for empty page list
+                    if (pages.length === 0) {
+                        console.warn(`Chapter ${chapter.id} (Ch. ${chapter.chapterNumber}) has 0 pages!`);
+                        completed++;
+                        continue;
+                    }
+
+                    // 3. Cache Each Page (Parallel with Concurrency)
+                    const CONCURRENCY = 4;
+                    const downloadPage = async (page: string): Promise<boolean> => {
+                        let attempts = 0;
+                        const maxRetries = 3;
+                        let saved = false;
+
+                        while (attempts < maxRetries && !saved && !cancelled) {
+                            attempts++;
+                            try {
+                                if (attempts > 1) console.log(`Retry attempt ${attempts}/${maxRetries} for page: ${page}`);
+
+                                // 20s timeout per attempt
+                                await Promise.race([
+                                    window.electronAPI.cache.save(page, extensionId, mangaId, chapter.id),
+                                    new Promise((_, reject) => setTimeout(() => reject(new Error('Save timeout')), 20000))
+                                ]);
+                                saved = true;
+                            } catch (e: any) {
+                                console.warn(`Failed to cache page (Attempt ${attempts}/${maxRetries}): ${page}`, e.message || e);
+                                if (attempts === maxRetries) {
+                                    console.error(`Permanently failed to cache page after ${maxRetries} attempts: ${page}`);
+                                } else {
+                                    // Exponential backoff
+                                    await new Promise(r => setTimeout(r, 1000 * attempts));
+                                }
+                            }
+                        }
+                        return saved;
+                    };
+
+                    let lastProgressUpdate = 0;
+                    const updateProgress = () => {
+                        const now = Date.now();
+                        // Throttle updates to once every 250ms to avoid UI stutter and freezing
+                        if (now - lastProgressUpdate > 250) {
+                            set({
+                                prefetchProgress: {
+                                    current: completed + 1, // +1 because we are currently working on this chapter
+                                    total: chapters.length,
+                                    chapter: `Ch. ${chapter.chapterNumber}`
+                                }
+                            });
+                            lastProgressUpdate = now;
+                        }
+                    };
+                    let successfulPages = 0;
+                    const totalPages = pages.length;
+
+                    for (let i = 0; i < pages.length; i += CONCURRENCY) {
+                        if (cancelled) break;
+                        const batch = pages.slice(i, i + CONCURRENCY);
+                        const results = await Promise.all(batch.map(async page => {
+                            const success = await downloadPage(page);
+                            if (success) successfulPages++;
+                            return success;
+                        }));
+                        updateProgress();
+                    }
+
+                    if (successfulPages < totalPages) {
+                        console.warn(`Chapter ${chapter.id} (Ch. ${chapter.chapterNumber}): Only ${successfulPages}/${totalPages} pages cached successfully`);
+                    }
+                } catch (e) {
+                    console.error(`Unexpected error processing chapter ${chapter.id}`, e);
+                }
+                completed++;
+            }
+        } catch (err) {
+            console.error('Error during prefetch initialization:', err);
+        } finally {
+            console.log('Prefetch finished or cancelled');
+            set({
+                isPrefetching: false,
+                prefetchMangaId: null,
+                prefetchProgress: { current: 0, total: 0, chapter: '' }
+            });
+        }
     },
 }));

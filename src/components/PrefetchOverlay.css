@@ -1,0 +1,89 @@
+/* CSS for PrefetchOverlay - matching MangaDetail.css styles */
+.prefetch-progress-overlay {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+    /* Ensure high z-index for global overlay */
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.prefetch-card {
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    width: 300px;
+    box-shadow: var(--shadow-xl);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.prefetch-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+}
+
+.prefetch-count {
+    color: var(--color-text-muted);
+}
+
+.prefetch-bar-bg {
+    height: 6px;
+    background: var(--color-bg-secondary);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.prefetch-bar-fill {
+    height: 100%;
+    background: var(--color-accent);
+    transition: width 0.3s ease;
+}
+
+.prefetch-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    font-size: var(--font-size-xs);
+    color: var(--color-text-secondary);
+}
+
+.btn-cancel-prefetch {
+    background: none;
+    border: none;
+    color: var(--color-error);
+    cursor: pointer;
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.btn-cancel-prefetch:hover {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.truncate {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+}

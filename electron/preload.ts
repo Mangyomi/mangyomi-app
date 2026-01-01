@@ -67,6 +67,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     app: {
         createDumpLog: (consoleLogs: string, networkActivity: string) =>
             ipcRenderer.invoke('app:createDumpLog', consoleLogs, networkActivity),
+        openExternal: (url: string) => ipcRenderer.invoke('app:openExternal', url),
+        openInAppBrowser: (url: string) => ipcRenderer.invoke('app:openInAppBrowser', url),
     },
 
     cache: {
@@ -74,7 +76,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
             ipcRenderer.invoke('cache:save', url, extensionId, mangaId, chapterId),
         clear: (mangaId?: string) => ipcRenderer.invoke('cache:clear', mangaId),
         setLimit: (bytes: number) => ipcRenderer.invoke('cache:setLimit', bytes),
-        getSize: () => ipcRenderer.invoke('cache:getSize') as Promise<number>
+        getSize: () => ipcRenderer.invoke('cache:getSize') as Promise<number>,
+        checkManga: (mangaId: string) => ipcRenderer.invoke('cache:checkManga', mangaId) as Promise<number>
     },
 
     anilist: {
