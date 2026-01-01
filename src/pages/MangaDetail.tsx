@@ -52,6 +52,17 @@ function MangaDetail() {
     };
 
     useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                navigate(-1);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [navigate]);
+
+    useEffect(() => {
         fetchTags();
     }, [libraryEntry, isTagSelectorOpen]);
 
@@ -205,6 +216,7 @@ function MangaDetail() {
             {/* Hero Section */}
             <div className="manga-hero">
                 <div className="manga-hero-bg" style={{ backgroundImage: `url(${proxiedCoverUrl})` }} />
+
                 <div className="manga-hero-content">
                     <img src={proxiedCoverUrl} alt={currentManga.title} className="manga-cover" />
                     <div className="manga-info">

@@ -18,12 +18,13 @@ function Browse() {
         searchMangaList,
         loadMoreBrowse,
         library,
+        searchQuery: storeSearchQuery,
     } = useAppStore();
 
     const { isExtensionEnabled } = useSettingsStore();
 
-    const [searchQuery, setSearchQuery] = useState('');
-    const [activeTab, setActiveTab] = useState<'popular' | 'latest'>('popular');
+    const [searchQuery, setSearchQuery] = useState(storeSearchQuery);
+    const [activeTab, setActiveTab] = useState<'popular' | 'latest'>(browseMode === 'latest' ? 'latest' : 'popular');
     const observerRef = useRef<IntersectionObserver | null>(null);
     const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -41,9 +42,14 @@ function Browse() {
 
     useEffect(() => {
         if (selectedExtension && isExtensionEnabled(selectedExtension.id)) {
+            // If we have data and match the mode, don't re-fetch (preserves state on back nav)
+            if (browseManga.length > 0 && ((browseMode === 'search') || (browseMode === activeTab))) {
+                setSearchQuery(storeSearchQuery);
+                return;
+            }
             browseMangaList(activeTab, 1);
         }
-    }, [selectedExtension, activeTab]);
+    }, [selectedExtension]);
 
     useEffect(() => {
         observerRef.current = new IntersectionObserver(
@@ -84,6 +90,7 @@ function Browse() {
     const handleTabChange = (tab: 'popular' | 'latest') => {
         setActiveTab(tab);
         setSearchQuery('');
+        browseMangaList(tab, 1);
     };
 
     if (enabledExtensions.length === 0) {

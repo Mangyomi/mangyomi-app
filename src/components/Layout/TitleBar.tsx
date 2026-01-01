@@ -1,6 +1,7 @@
-import { useMatch } from 'react-router-dom';
+import { useMatch, useNavigate, useLocation } from 'react-router-dom';
 import { useAppStore } from '../../stores/appStore';
-import { Logo } from '../Logo';
+
+import { Icons } from '../Icons';
 import './TitleBar.css';
 import { useState } from 'react';
 
@@ -8,6 +9,13 @@ function TitleBar() {
     const minimize = () => window.electronAPI.window.minimize();
     const maximize = () => window.electronAPI.window.maximize();
     const close = () => window.electronAPI.window.close();
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    // Determine if we can go back. 
+    // Simplified check: if not root pages. 
+    const isRoot = ['/', '/browse', '/extensions', '/history', '/settings', '/tags'].includes(location.pathname);
+    const canGoBack = !isRoot;
 
     const match = useMatch('/manga/:extensionId/:mangaId');
     const { loadMangaDetails, loadChapters } = useAppStore();
@@ -37,9 +45,16 @@ function TitleBar() {
     return (
         <div className="titlebar">
             <div className="titlebar-drag-region">
-                <div className="titlebar-title">
-                    <Logo size={16} />
-                    <span>Mangyomi</span>
+                <div className="titlebar-left-controls">
+                    {canGoBack && (
+                        <button
+                            className="titlebar-back-btn"
+                            onClick={() => navigate(-1)}
+                            title="Go Back"
+                        >
+                            <Icons.ArrowLeft width={14} height={14} />
+                        </button>
+                    )}
                 </div>
             </div>
             <div className="window-controls">

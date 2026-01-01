@@ -179,6 +179,8 @@ export const useAppStore = create<AppState>((set, get) => ({
             browseManga: [],
             browsePage: 1,
             browseHasMore: true,
+            browseMode: 'popular',
+            searchQuery: '',
         });
     },
 
