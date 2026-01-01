@@ -37,4 +37,10 @@ Install and manage extensions directly from GitHub repositories.
 ## Settings
 Customize theme, reader mode, prefetch behavior, and debug options.
 
-![Settings View](./docs/manga_settings.png)
+| General | Library |
+| :---: | :---: |
+| ![General](./docs/manga_settings_one.png) | ![Library](./docs/manga_settings_two.png) |
+| **Reader** | **Storage** |
+| ![Reader](./docs/manga_settings_three.png) | ![Storage](./docs/manga_settings_four.png) |
+| **Discord** | **Advanced** |
+| ![Discord](./docs/manga_settings_five.png) | ![Advanced](./docs/manga_settings_six.png) |

@@ -2,6 +2,23 @@
 
 A Tachiyomi-style manga reader desktop application built with Electron and React.
 
+## Disclaimer
+
+Mangyomi is a **manga reading application** that provides a platform for browsing and reading manga through third-party extensions.
+
+### Important Notice
+
+- **No Content Hosting**: Mangyomi does not host, store, or distribute any manga content. All content is fetched directly from third-party websites through user-installed extensions.
+- **Extension Responsibility**: Extensions are developed independently and are not bundled with the core application. Users choose which extensions to install.
+- **User Responsibility**: Users are responsible for ensuring their use of this application complies with local laws and the terms of service of the content sources they access.
+- **Educational Purpose**: This project is provided for educational and personal use. The developers do not condone or encourage piracy.
+
+### Copyright
+
+If you are a copyright holder and believe content accessible through third-party extensions infringes your rights, please contact the respective website operators directly.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY. See the [LICENSE](LICENSE) file for details.
+
 ![Mangyomi Screenshot](./docs/manga_library.png)
 
 **[📸 View Full Showcase](./SHOWCASE.md)**
@@ -12,9 +29,12 @@ A Tachiyomi-style manga reader desktop application built with Electron and React
 - 🔍 **Browse Sources** - Search and discover manga from multiple sources via extensions
 - 📖 **Chapter Reader** - Smooth reading experience with vertical scroll and page modes
 - 📜 **Reading History** - Track your reading progress across all manga
+- 📉 **Tracking** - Automatically sync reading progress with AniList
+- 🎮 **Discord RPC** - Show your current reading activity on Discord with rich presence
+- 📥 **Downloads** - Download chapters for offline reading
 - 🏷️ **Tags** - Organize manga with custom colored tags
 - 🔌 **Extension System** - Install extensions directly from GitHub repositories
-- ⚙️ **Settings** - Customize theme, prefetch behavior, and more
+- ⚙️ **Settings** - Customize theme, reading preferences, and privacy options
 
 ## Installing Extensions
 
@@ -41,6 +61,25 @@ my-extensions-repo/
 │   ├── manifest.json
 │   └── index.js
 ```
+
+## 🎮 Discord Rich Presence
+
+Mangyomi integrates with Discord to display your reading status:
+
+- **Rich Details**: Shows Manga title, current chapter, and source extension.
+- **Privacy Controls**:
+  - **Hide NSFW**: Option to automatically hide status when reading NSFW content.
+  - **Strict Mode**: Treat all content from NSFW-tagged extensions as sensitive.
+  - **Incognito**: Toggle RPC on/off globally.
+- **Interactive**: Buttons to view the manga on AniList or viewing the project on GitHub.
+
+## 📉 Tracking (AniList)
+
+Sync your reading progress automatically:
+
+- **Two-way Sync**: Updates your AniList profile as you read.
+- **Status Updates**: Automatically changes status to "Reading" or "Completed".
+- **Score Tracking**: Update your score directly from the app (Work in Progress).
 
 ## Getting Started
 
@@ -123,7 +162,7 @@ module.exports = {
 
 ## License
 
-Apache 2.0
+GNU General Public License v3.0
 
 ## Acknowledgments
 
