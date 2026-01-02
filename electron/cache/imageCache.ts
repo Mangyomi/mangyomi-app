@@ -229,8 +229,17 @@ class ImageCache {
 
     private pendingRequests: Map<string, Promise<string>> = new Map();
 
-    async saveToCache(url: string, headers: Record<string, string>, mangaId: string, chapterId: string): Promise<string> {
+    async saveToCache(url: string, headers: Record<string, string>, mangaId: string, chapterId: string, isPrefetch: boolean = false): Promise<string | null> {
         if (!this.initialized) this.init();
+
+        // For prefetch: check if over cache limit and stop if so (don't prune)
+        if (isPrefetch) {
+            const currentSize = await this.getCacheSize();
+            if (currentSize >= this.maxCacheSize) {
+                console.log('[Cache] Prefetch skipped - cache limit reached');
+                return null; // Signal to caller that prefetch should stop
+            }
+        }
 
         // Check if there's already a pending request for this URL
         if (this.pendingRequests.has(url)) {
@@ -290,8 +299,10 @@ class ImageCache {
                     '@size': data.length
                 });
 
-                // 4. Prune Check
-                this.schedulePrune();
+                // 4. Prune Check - only for non-prefetch saves
+                if (!isPrefetch) {
+                    this.schedulePrune();
+                }
 
                 return filePath;
             } catch (error) {

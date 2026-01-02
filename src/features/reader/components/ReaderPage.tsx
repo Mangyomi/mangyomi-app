@@ -4,6 +4,7 @@ import { useAppStore } from '../../../stores/appStore';
 import { useSettingsStore } from '../../settings/stores/settingsStore';
 import { useExtensionStore } from '../../extensions/stores/extensionStore';
 import { useReaderStore } from '../stores/readerStore';
+import Tooltip from '../../../components/Tooltip/Tooltip';
 import './ReaderPage.css';
 
 function ReaderPage() {
@@ -332,9 +333,11 @@ function ReaderPage() {
             {/* Controls Overlay */}
             <div className="reader-controls">
                 <div className="reader-header">
-                    <button className="btn btn-ghost btn-icon" onClick={handleGoBack} title="Back">
-                        ←
-                    </button>
+                    <Tooltip content="Back" position="bottom">
+                        <button className="btn btn-ghost btn-icon" onClick={handleGoBack}>
+                            ←
+                        </button>
+                    </Tooltip>
 
                     <div className="reader-title-container" ref={dropdownRef}>
                         <button
@@ -377,51 +380,61 @@ function ReaderPage() {
                     </div>
 
                     <div className="reader-nav-actions">
-                        <button
-                            className="btn btn-ghost btn-icon"
-                            onClick={handlePrevChapter}
-                            disabled={!prevChapter}
-                            title="Previous Chapter"
-                        >
-                            ⏮
-                        </button>
-                        <button
-                            className="btn btn-ghost btn-icon"
-                            onClick={handleNextChapter}
-                            disabled={!nextChapter}
-                            title="Next Chapter"
-                        >
-                            ⏭
-                        </button>
+                        <Tooltip content="Previous Chapter" position="bottom">
+                            <button
+                                className="btn btn-ghost btn-icon"
+                                onClick={handlePrevChapter}
+                                disabled={!prevChapter}
+                            >
+                                ⏮
+                            </button>
+                        </Tooltip>
+                        <Tooltip content="Next Chapter" position="bottom">
+                            <button
+                                className="btn btn-ghost btn-icon"
+                                onClick={handleNextChapter}
+                                disabled={!nextChapter}
+                            >
+                                ⏭
+                            </button>
+                        </Tooltip>
                     </div>
 
                     <div className="reader-options">
                         <div className="reader-zoom-controls">
-                            <button className="btn btn-ghost btn-icon" onClick={handleZoomOut} title="Zoom Out">
-                                -
-                            </button>
-                            <button className="btn btn-ghost btn-text" onClick={handleResetZoom} title="Reset Zoom">
-                                {Math.round(zoomLevel * 100)}%
-                            </button>
-                            <button className="btn btn-ghost btn-icon" onClick={handleZoomIn} title="Zoom In">
-                                +
-                            </button>
+                            <Tooltip content="Zoom Out" position="bottom">
+                                <button className="btn btn-ghost btn-icon" onClick={handleZoomOut}>
+                                    -
+                                </button>
+                            </Tooltip>
+                            <Tooltip content="Reset Zoom" position="bottom">
+                                <button className="btn btn-ghost btn-text" onClick={handleResetZoom}>
+                                    {Math.round(zoomLevel * 100)}%
+                                </button>
+                            </Tooltip>
+                            <Tooltip content="Zoom In" position="bottom">
+                                <button className="btn btn-ghost btn-icon" onClick={handleZoomIn}>
+                                    +
+                                </button>
+                            </Tooltip>
                         </div>
                         <div className="reader-mode-controls">
-                            <button
-                                className={`btn btn-ghost btn-icon ${readerMode === 'vertical' ? 'active' : ''}`}
-                                onClick={() => setReaderMode('vertical')}
-                                title="Vertical scroll"
-                            >
-                                ↕
-                            </button>
-                            <button
-                                className={`btn btn-ghost btn-icon ${readerMode === 'horizontal' ? 'active' : ''}`}
-                                onClick={() => setReaderMode('horizontal')}
-                                title="Horizontal pages"
-                            >
-                                ↔
-                            </button>
+                            <Tooltip content="Vertical scroll" position="bottom">
+                                <button
+                                    className={`btn btn-ghost btn-icon ${readerMode === 'vertical' ? 'active' : ''}`}
+                                    onClick={() => setReaderMode('vertical')}
+                                >
+                                    ↕
+                                </button>
+                            </Tooltip>
+                            <Tooltip content="Horizontal pages" position="bottom">
+                                <button
+                                    className={`btn btn-ghost btn-icon ${readerMode === 'horizontal' ? 'active' : ''}`}
+                                    onClick={() => setReaderMode('horizontal')}
+                                >
+                                    ↔
+                                </button>
+                            </Tooltip>
                         </div>
                     </div>
                 </div>

@@ -3,13 +3,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { schema } from './schema';
 
-// Helper types to match better-sqlite3 API
 interface RunResult {
     changes: number;
     lastInsertRowid: number | bigint;
 }
 
-// Wrapper to mimic better-sqlite3 Statement
 class StatementWrapper {
     private stmt: any;
     private dbWrapper: DatabaseWrapper;
@@ -62,7 +60,6 @@ class StatementWrapper {
     }
 }
 
-// Wrapper to mimic better-sqlite3 Database
 class DatabaseWrapper {
     private db: Database;
     private dbPath: string;

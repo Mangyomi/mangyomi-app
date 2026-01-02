@@ -1,0 +1,78 @@
+.tri-state-checkbox {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    cursor: pointer;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    transition: background var(--transition-fast);
+    user-select: none;
+}
+
+.tri-state-checkbox:hover {
+    background: var(--color-bg-tertiary);
+}
+
+.tri-state-box {
+    width: 22px;
+    height: 22px;
+    border-radius: var(--radius-sm);
+    border: 2px solid var(--color-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    background: transparent;
+}
+
+.tri-state-checkbox.neutral .tri-state-box {
+    border-color: var(--color-border);
+    background: transparent;
+}
+
+.tri-state-checkbox.include .tri-state-box {
+    border-color: var(--color-accent);
+    background: var(--color-accent);
+}
+
+.tri-state-checkbox.exclude .tri-state-box {
+    border-color: var(--color-error, #ef4444);
+    background: var(--color-error, #ef4444);
+}
+
+.tri-state-icon {
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.tri-state-label {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+}
+
+/* Filter group for tri-state */
+.tri-state-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.tri-state-filter-label {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-secondary);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: var(--spacing-xs);
+}
+
+.tri-state-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+    max-height: 200px;
+    overflow-y: auto;
+    padding-right: var(--spacing-xs);
+}

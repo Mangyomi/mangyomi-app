@@ -1,5 +1,25 @@
 import { create } from 'zustand';
 
+interface FilterOption {
+    value: string;
+    label: string;
+}
+
+interface ExtensionFilter {
+    id: string;
+    label: string;
+    type: 'select' | 'tri-state';
+    options: FilterOption[];
+    default?: string | string[];
+}
+
+interface TriStateFilterValue {
+    include: string[];
+    exclude: string[];
+}
+
+type FilterValues = Record<string, string | string[] | TriStateFilterValue>;
+
 interface BrowseState {
     browseManga: any[];
     browseLoading: boolean;
@@ -8,10 +28,20 @@ interface BrowseState {
     browseMode: 'popular' | 'latest' | 'search';
     searchQuery: string;
 
+    // Filter state
+    availableFilters: ExtensionFilter[];
+    activeFilters: FilterValues;
+    filtersLoading: boolean;
+
     setBrowseLoading: (loading: boolean) => void;
 
-    // Actions
-    browseMangaList: (extensionId: string, mode: 'popular' | 'latest', page?: number) => Promise<void>;
+    // Filter actions
+    loadFilters: (extensionId: string) => Promise<void>;
+    setFilter: (filterId: string, value: string | string[]) => void;
+    clearFilters: () => void;
+
+    // Browse actions
+    browseMangaList: (extensionId: string, mode: 'popular' | 'latest', page?: number, resetFilters?: boolean) => Promise<void>;
     searchMangaList: (extensionId: string, query: string, page?: number) => Promise<void>;
     loadMoreBrowse: (extensionId: string) => Promise<void>;
     resetBrowse: () => void;
@@ -24,8 +54,50 @@ export const useBrowseStore = create<BrowseState>((set, get) => ({
     browsePage: 1,
     browseMode: 'popular',
     searchQuery: '',
+    availableFilters: [],
+    activeFilters: {},
+    filtersLoading: false,
 
     setBrowseLoading: (loading) => set({ browseLoading: loading }),
+
+    loadFilters: async (extensionId) => {
+        set({ filtersLoading: true });
+        try {
+            const filters = await window.electronAPI.extensions.getFilters(extensionId);
+            // Build default values from filter definitions
+            const defaultFilters: FilterValues = {};
+            for (const filter of filters) {
+                if (filter.default !== undefined) {
+                    defaultFilters[filter.id] = filter.default;
+                }
+            }
+            set({
+                availableFilters: filters,
+                activeFilters: defaultFilters,
+                filtersLoading: false
+            });
+        } catch (error) {
+            console.error('Failed to load filters:', error);
+            set({ availableFilters: [], activeFilters: {}, filtersLoading: false });
+        }
+    },
+
+    setFilter: (filterId, value) => {
+        set((state) => ({
+            activeFilters: { ...state.activeFilters, [filterId]: value }
+        }));
+    },
+
+    clearFilters: () => {
+        const { availableFilters } = get();
+        const defaultFilters: FilterValues = {};
+        for (const filter of availableFilters) {
+            if (filter.default !== undefined) {
+                defaultFilters[filter.id] = filter.default;
+            }
+        }
+        set({ activeFilters: defaultFilters });
+    },
 
     resetBrowse: () => set({
         browseManga: [],
@@ -33,17 +105,40 @@ export const useBrowseStore = create<BrowseState>((set, get) => ({
         browseHasMore: true,
         browseMode: 'popular',
         searchQuery: '',
+        availableFilters: [],
+        activeFilters: {},
     }),
 
-    browseMangaList: async (extensionId, mode, page = 1) => {
+    browseMangaList: async (extensionId, mode, page = 1, resetFilters = false) => {
+        const { activeFilters, availableFilters } = get();
+
+        // If resetFilters is true, reset to defaults for UI display, but don't pass filters to API
+        let filtersToUse = activeFilters;
+        if (resetFilters) {
+            // Reset UI to show default filter values
+            const defaultFilters: FilterValues = {};
+            for (const filter of availableFilters) {
+                if (filter.default !== undefined) {
+                    defaultFilters[filter.id] = filter.default;
+                }
+            }
+            set({ activeFilters: defaultFilters });
+            // Don't apply any filters to the API call - let Popular/Latest work as intended
+            filtersToUse = {};
+        }
+
+        // Clear existing list if loading first page to avoid showing stale data from previous tab
+        if (page === 1) {
+            set({ browseManga: [] });
+        }
+
         set({ browseLoading: true, browseMode: mode, searchQuery: '' });
 
         try {
-            // Note: Currently dependent on window.electronAPI
-            // In a cleaner architectuer, we would inject this dependency
+            const filters = Object.keys(filtersToUse).length > 0 ? filtersToUse : undefined;
             const result = mode === 'popular'
-                ? await window.electronAPI.extensions.getPopularManga(extensionId, page)
-                : await window.electronAPI.extensions.getLatestManga(extensionId, page);
+                ? await window.electronAPI.extensions.getPopularManga(extensionId, page, filters)
+                : await window.electronAPI.extensions.getLatestManga(extensionId, page, filters);
 
             set({
                 browseManga: page === 1 ? result.manga : [...get().browseManga, ...result.manga],
@@ -54,8 +149,6 @@ export const useBrowseStore = create<BrowseState>((set, get) => ({
         } catch (error: any) {
             console.error('Failed to browse manga:', error);
             set({ browseLoading: false });
-            // Captcha handling logic from appStore needs to be handled in Component or via a shared UI store
-            // For now we just log/stop loading
         }
     },
 
@@ -90,3 +183,4 @@ export const useBrowseStore = create<BrowseState>((set, get) => ({
         }
     },
 }));
+

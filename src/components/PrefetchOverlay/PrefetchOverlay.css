@@ -87,3 +87,64 @@
     text-overflow: ellipsis;
     flex: 1;
 }
+
+/* Error State */
+.prefetch-card.prefetch-error {
+    border-color: var(--color-error, #ef4444);
+}
+
+.prefetch-card.prefetch-error .prefetch-title {
+    color: var(--color-error, #ef4444);
+}
+
+.prefetch-bar-bg.prefetch-bar-error {
+    background: rgba(239, 68, 68, 0.2);
+}
+
+.prefetch-bar-fill.prefetch-bar-fill-error {
+    background: var(--color-error, #ef4444);
+}
+
+.prefetch-error-message {
+    color: var(--color-error, #ef4444);
+    font-weight: 500;
+    flex: 1;
+}
+
+.prefetch-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-close-prefetch {
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    line-height: 1;
+}
+
+.btn-close-prefetch:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--color-error, #ef4444);
+}
+
+.btn-resume-prefetch {
+    background: var(--color-accent);
+    border: none;
+    color: white;
+    cursor: pointer;
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    padding: 4px 12px;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.btn-resume-prefetch:hover {
+    filter: brightness(1.1);
+}

@@ -71,10 +71,8 @@ export const useExtensionStore = create<ExtensionState>((set, get) => ({
         try {
             const extensions = await window.electronAPI.extensions.getAll();
             set({ extensions, loadingExtensions: false });
-
-            if (extensions.length > 0 && !get().selectedExtension) {
-                set({ selectedExtension: extensions[0] });
-            }
+            // Don't set a default here - let the Browse component handle it
+            // based on the user's custom extension order
         } catch (error) {
             console.error('Failed to load extensions:', error);
             set({ loadingExtensions: false });

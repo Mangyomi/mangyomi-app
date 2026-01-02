@@ -6,6 +6,8 @@ import { useExtensionStore } from '../../extensions/stores/extensionStore';
 import { useLibraryStore } from '../../library/stores/libraryStore';
 import MangaCard from '../../../components/MangaCard';
 import { Icons } from '../../../components/Icons';
+import CustomDropdown from '../../../components/CustomDropdown/CustomDropdown';
+import TriStateCheckbox, { TriState } from '../../../components/TriStateCheckbox/TriStateCheckbox';
 import './Browse.css';
 
 function Browse() {
@@ -21,6 +23,10 @@ function Browse() {
         browseMangaList,
         searchMangaList,
         loadMoreBrowse,
+        availableFilters,
+        activeFilters,
+        loadFilters,
+        setFilter,
     } = useBrowseStore();
 
     const { isExtensionEnabled, extensionOrder, setExtensionOrder } = useSettingsStore();
@@ -30,6 +36,8 @@ function Browse() {
     const observerRef = useRef<IntersectionObserver | null>(null);
     const loadMoreRef = useRef<HTMLDivElement>(null);
     const [draggedId, setDraggedId] = useState<string | null>(null);
+    const [showFilters, setShowFilters] = useState(false);
+    const triStateDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
     const enabledExtensions = extensions.filter(ext => isExtensionEnabled(ext.id));
     const libraryIds = new Set(library.map(m => `${m.source_id}:${m.source_manga_id}`));
@@ -92,33 +100,24 @@ function Browse() {
     }, [storeSearchQuery]);
 
     useEffect(() => {
-        if (enabledExtensions.length > 0) {
+        if (orderedExtensions.length > 0) {
             if (!selectedExtension || !isExtensionEnabled(selectedExtension.id)) {
-                selectExtension(enabledExtensions[0]);
+                selectExtension(orderedExtensions[0]);
             }
         }
-    }, [enabledExtensions, selectedExtension, isExtensionEnabled, selectExtension]);
+    }, [orderedExtensions, selectedExtension, isExtensionEnabled, selectExtension]);
 
     useEffect(() => {
         if (selectedExtension && isExtensionEnabled(selectedExtension.id)) {
-            // If we have data and match the mode, don't re-fetch (preserves state on back nav)
-            // But if we switched extension, we SHOULD fetch. 
-            // The store doesn't know about "selected extension" change unless we tell it.
-            // Since `selectedExtension` is in `appStore` and `browseStore` is dumb, we need to trigger here.
-
-            // NOTE: Ideally, we should check if the store's data belongs to the current extension.
-            // For now, we rely on the fact that `browseMangaList` clears data or we check if store is empty?
-            // Actually, `browseStore` handles `browseManga` replacement.
-
-            // Simple check: if we have 0 items, fetch. Or if mode changed. 
-            // For now, let's keep the logic similar to original but ensure we pass extensionId
+            // Load filters for this extension
+            loadFilters(selectedExtension.id);
 
             if (browseManga.length > 0 && ((browseMode === 'search') || (browseMode === activeTab))) {
                 return;
             }
             browseMangaList(selectedExtension.id, activeTab, 1);
         }
-    }, [selectedExtension]); // Run when extension changes
+    }, [selectedExtension]);
 
     // Re-attach observer when loading state changes
     useEffect(() => {
@@ -160,9 +159,61 @@ function Browse() {
     const handleTabChange = (tab: 'popular' | 'latest') => {
         setActiveTab(tab);
         setSearchQuery('');
+
         if (selectedExtension) {
-            browseMangaList(selectedExtension.id, tab, 1);
+            // Pass resetFilters=true to clear filters atomically during the same call
+            browseMangaList(selectedExtension.id, tab, 1, true);
         }
+    };
+
+    const handleFilterChange = (filterId: string, value: string) => {
+        setFilter(filterId, value);
+        if (selectedExtension) {
+            if (browseMode === 'search' && storeSearchQuery) {
+                searchMangaList(selectedExtension.id, storeSearchQuery, 1);
+            } else {
+                browseMangaList(selectedExtension.id, activeTab, 1);
+            }
+        }
+    };
+
+    const handleTriStateChange = (filterId: string, optionValue: string, newState: TriState) => {
+        const currentValue = activeFilters[filterId] as unknown as { include: string[]; exclude: string[] } | undefined;
+        const include = [...(currentValue?.include || [])];
+        const exclude = [...(currentValue?.exclude || [])];
+
+        // Remove from both arrays first
+        const includeIdx = include.indexOf(optionValue);
+        if (includeIdx > -1) include.splice(includeIdx, 1);
+        const excludeIdx = exclude.indexOf(optionValue);
+        if (excludeIdx > -1) exclude.splice(excludeIdx, 1);
+
+        // Add to appropriate array based on new state
+        if (newState === 'include') include.push(optionValue);
+        if (newState === 'exclude') exclude.push(optionValue);
+
+        setFilter(filterId, { include, exclude } as unknown as string[]);
+
+        // Debounce the fetch - wait 2 seconds after user stops clicking
+        if (triStateDebounceRef.current) {
+            clearTimeout(triStateDebounceRef.current);
+        }
+        triStateDebounceRef.current = setTimeout(() => {
+            if (selectedExtension) {
+                if (browseMode === 'search' && storeSearchQuery) {
+                    searchMangaList(selectedExtension.id, storeSearchQuery, 1);
+                } else {
+                    browseMangaList(selectedExtension.id, activeTab, 1);
+                }
+            }
+        }, 2000);
+    };
+
+    const getTriState = (filterId: string, optionValue: string): TriState => {
+        const value = activeFilters[filterId] as unknown as { include: string[]; exclude: string[] } | undefined;
+        if (value?.include?.includes(optionValue)) return 'include';
+        if (value?.exclude?.includes(optionValue)) return 'exclude';
+        return 'neutral';
     };
 
     if (enabledExtensions.length === 0) {
@@ -250,7 +301,45 @@ function Browse() {
                         <Icons.Search /> Search Results
                     </button>
                 )}
+                {availableFilters.length > 0 && (
+                    <button
+                        className={`tab filter-toggle ${showFilters ? 'active' : ''}`}
+                        onClick={() => setShowFilters(!showFilters)}
+                    >
+                        <Icons.Filter />
+                    </button>
+                )}
             </div>
+
+            {/* Filters */}
+            {availableFilters.length > 0 && showFilters && (
+                <div className="browse-filters">
+                    {availableFilters.map(filter => (
+                        <div key={filter.id} className={`filter-group ${filter.type === 'tri-state' ? 'tri-state-filter-group' : ''}`}>
+                            <label className="filter-label">{filter.label}</label>
+                            {filter.type === 'tri-state' ? (
+                                <div className="tri-state-options">
+                                    {filter.options.map(option => (
+                                        <TriStateCheckbox
+                                            key={option.value}
+                                            label={option.label}
+                                            state={getTriState(filter.id, option.value)}
+                                            onChange={(newState) => handleTriStateChange(filter.id, option.value, newState)}
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                <CustomDropdown
+                                    options={filter.options}
+                                    value={(activeFilters[filter.id] as string) || (filter.default as string) || ''}
+                                    onChange={(value) => handleFilterChange(filter.id, value)}
+                                    placeholder="Select..."
+                                />
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
 
             {/* Manga Grid */}
             {browseManga.length === 0 && !browseLoading ? (

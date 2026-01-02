@@ -48,11 +48,13 @@
     font-size: var(--font-size-3xl);
     font-weight: 700;
     line-height: 1.2;
+    color: white;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .manga-author {
     font-size: var(--font-size-md);
-    color: var(--color-text-secondary);
+    color: rgba(255, 255, 255, 0.8);
 }
 
 .manga-status {

@@ -268,7 +268,7 @@ function setupImageProxy() {
 
             // 4. Save to appropriate cache associated with the request type
             try {
-                let filePath: string;
+                let filePath: string | null;
                 if (mangaId && chapterId) {
                     // It's a chapter page - save to main cache (original quality)
                     filePath = await imageCache.saveToCache(imageUrl, headers, mangaId, chapterId);
@@ -276,6 +276,11 @@ function setupImageProxy() {
                     // It's a cover/browse image - save to cover cache (compressed)
                     // Pass mangaId if available to track in DB
                     filePath = await imageCache.saveCover(imageUrl, headers, mangaId || undefined);
+                }
+
+                // If cache returned null (limit reached during prefetch), fall through to direct fetch
+                if (filePath === null) {
+                    throw new Error('Cache limit reached');
                 }
 
                 entry.status = 200;
@@ -587,16 +592,22 @@ function setupIpcHandlers(extensionsPath: string) {
         }));
     });
 
-    ipcMain.handle('ext:getPopularManga', async (_, extensionId: string, page: number) => {
+    ipcMain.handle('ext:getFilters', async (_, extensionId: string) => {
         const ext = getExtension(extensionId);
-        if (!ext) throw new Error(`Extension ${extensionId} not found`);
-        return ext.getPopularManga(page);
+        if (!ext) return [];
+        return ext.getFilters ? ext.getFilters() : [];
     });
 
-    ipcMain.handle('ext:getLatestManga', async (_, extensionId: string, page: number) => {
+    ipcMain.handle('ext:getPopularManga', async (_, extensionId: string, page: number, filters?: Record<string, string | string[]>) => {
         const ext = getExtension(extensionId);
         if (!ext) throw new Error(`Extension ${extensionId} not found`);
-        return ext.getLatestManga(page);
+        return ext.getPopularManga(page, filters);
+    });
+
+    ipcMain.handle('ext:getLatestManga', async (_, extensionId: string, page: number, filters?: Record<string, string | string[]>) => {
+        const ext = getExtension(extensionId);
+        if (!ext) throw new Error(`Extension ${extensionId} not found`);
+        return ext.getLatestManga(page, filters);
     });
 
     ipcMain.handle('ext:searchManga', async (_, extensionId: string, query: string, page: number) => {
@@ -673,7 +684,7 @@ function setupIpcHandlers(extensionsPath: string) {
         return result;
     });
 
-    ipcMain.handle('cache:save', async (_, url: string, extensionId: string, mangaId: string, chapterId: string) => {
+    ipcMain.handle('cache:save', async (_, url: string, extensionId: string, mangaId: string, chapterId: string, isPrefetch: boolean = false) => {
         const ext = getExtension(extensionId);
         const headers: Record<string, string> = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -683,7 +694,7 @@ function setupIpcHandlers(extensionsPath: string) {
         }
 
         try {
-            return await imageCache.saveToCache(url, headers, mangaId, chapterId);
+            return await imageCache.saveToCache(url, headers, mangaId, chapterId, isPrefetch);
         } catch (e) {
             console.error(`Cache save failed for ${url}:`, e);
             throw e;

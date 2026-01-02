@@ -100,6 +100,7 @@ export async function loadExtensions(extensionsPath: string): Promise<void> {
                 ...manifest,
                 icon: resolvedIcon,
                 getImageHeaders: extModule.getImageHeaders,
+                getFilters: extModule.getFilters,
                 getPopularManga: extModule.getPopularManga,
                 getLatestManga: extModule.getLatestManga,
                 searchManga: extModule.searchManga,

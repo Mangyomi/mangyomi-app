@@ -15,6 +15,26 @@ interface AvailableExtension {
     installed: boolean;
 }
 
+interface FilterOption {
+    value: string;
+    label: string;
+}
+
+interface ExtensionFilter {
+    id: string;
+    label: string;
+    type: 'select' | 'tri-state';
+    options: FilterOption[];
+    default?: string | string[];
+}
+
+interface TriStateFilterValue {
+    include: string[];
+    exclude: string[];
+}
+
+type FilterValues = Record<string, string | string[] | TriStateFilterValue>;
+
 interface InstallResult {
     success: boolean;
     error?: string;
@@ -60,8 +80,9 @@ interface Window {
             install: (repoUrl: string, extensionId: string) => Promise<InstallResult>;
             sideload: () => Promise<InstallResult>;
             uninstall: (extensionId: string) => Promise<InstallResult>;
-            getPopularManga: (extensionId: string, page: number) => Promise<any>;
-            getLatestManga: (extensionId: string, page: number) => Promise<any>;
+            getFilters: (extensionId: string) => Promise<ExtensionFilter[]>;
+            getPopularManga: (extensionId: string, page: number, filters?: FilterValues) => Promise<any>;
+            getLatestManga: (extensionId: string, page: number, filters?: FilterValues) => Promise<any>;
             searchManga: (extensionId: string, query: string, page: number) => Promise<any>;
             getMangaDetails: (extensionId: string, mangaId: string) => Promise<any>;
             getChapterList: (extensionId: string, mangaId: string) => Promise<any[]>;
@@ -73,7 +94,7 @@ interface Window {
             openInAppBrowser: (url: string) => Promise<void>;
         };
         cache: {
-            save: (url: string, extensionId: string, mangaId: string, chapterId: string) => Promise<string>;
+            save: (url: string, extensionId: string, mangaId: string, chapterId: string, isPrefetch?: boolean) => Promise<string | null>;
             clear: (mangaId?: string) => Promise<void>;
             setLimit: (bytes: number) => Promise<void>;
             getSize: () => Promise<number>;

@@ -85,8 +85,9 @@ interface AppState {
     // Global Prefetch State
     isPrefetching: boolean;
     prefetchMangaId: string | null;
-    prefetchProgress: { current: number; total: number; chapter: string };
+    prefetchProgress: { current: number; total: number; chapter: string; error?: string };
     cancelPrefetch: () => void;
+    resumePrefetch: () => void;
     startPrefetch: (chapters: Chapter[], extensionId: string, mangaId: string) => Promise<void>;
 }
 
@@ -101,8 +102,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     // Global Prefetch Init
     isPrefetching: false,
     prefetchMangaId: null,
-    prefetchProgress: { current: 0, total: 0, chapter: '' },
-    cancelPrefetch: () => { }, // placeholder, replaced in startPrefetch
+    prefetchProgress: { current: 0, total: 0, chapter: '', error: undefined },
+    cancelPrefetch: () => { },
+    resumePrefetch: () => { }, // placeholder, replaced in startPrefetch
 
     loadMangaDetails: async (extensionId: string, mangaId: string) => {
         try {
@@ -368,10 +370,15 @@ export const useAppStore = create<AppState>((set, get) => ({
                 const CONCURRENCY = 2;
                 for (let i = 0; i < pages.length; i += CONCURRENCY) {
                     const batch = pages.slice(i, i + CONCURRENCY);
-                    await Promise.all(batch.map(url =>
-                        window.electronAPI.cache.save(url, extensionId, mangaId, chapterId)
-                            .catch(e => console.error('Failed to cache page:', url, e))
+                    const results = await Promise.all(batch.map(url =>
+                        window.electronAPI.cache.save(url, extensionId, mangaId, chapterId, true)
+                            .catch(e => { console.error('Failed to cache page:', url, e); return null; })
                     ));
+                    // If any save returned null (cache limit reached), stop prefetching
+                    if (results.some(r => r === null)) {
+                        console.log('Cache limit reached, stopping prefetch for chapter', chapterId);
+                        break;
+                    }
                     // Longer delay between batches to reduce CPU load
                     await new Promise(resolve => setTimeout(resolve, 1000));
                 }
@@ -474,22 +481,28 @@ export const useAppStore = create<AppState>((set, get) => ({
 
                     // 3. Cache Each Page (Parallel with Concurrency)
                     const CONCURRENCY = 4;
-                    const downloadPage = async (page: string): Promise<boolean> => {
+                    let cacheLimitReached = false;
+
+                    const downloadPage = async (page: string): Promise<'success' | 'failed' | 'limit'> => {
                         let attempts = 0;
                         const maxRetries = 3;
-                        let saved = false;
 
-                        while (attempts < maxRetries && !saved && !cancelled) {
+                        while (attempts < maxRetries && !cancelled) {
                             attempts++;
                             try {
                                 if (attempts > 1) console.log(`Retry attempt ${attempts}/${maxRetries} for page: ${page}`);
 
                                 // 20s timeout per attempt
-                                await Promise.race([
-                                    window.electronAPI.cache.save(page, extensionId, mangaId, chapter.id),
-                                    new Promise((_, reject) => setTimeout(() => reject(new Error('Save timeout')), 20000))
+                                const result = await Promise.race([
+                                    window.electronAPI.cache.save(page, extensionId, mangaId, chapter.id, true),
+                                    new Promise<string | null>((_, reject) => setTimeout(() => reject(new Error('Save timeout')), 20000))
                                 ]);
-                                saved = true;
+
+                                // null means cache limit reached
+                                if (result === null) {
+                                    return 'limit';
+                                }
+                                return 'success';
                             } catch (e: any) {
                                 console.warn(`Failed to cache page (Attempt ${attempts}/${maxRetries}): ${page}`, e.message || e);
                                 if (attempts === maxRetries) {
@@ -500,19 +513,20 @@ export const useAppStore = create<AppState>((set, get) => ({
                                 }
                             }
                         }
-                        return saved;
+                        return 'failed';
                     };
 
                     let lastProgressUpdate = 0;
-                    const updateProgress = () => {
+                    const updateProgress = (error?: string) => {
                         const now = Date.now();
                         // Throttle updates to once every 250ms to avoid UI stutter and freezing
-                        if (now - lastProgressUpdate > 250) {
+                        if (now - lastProgressUpdate > 250 || error) {
                             set({
                                 prefetchProgress: {
-                                    current: completed + 1, // +1 because we are currently working on this chapter
+                                    current: completed + 1,
                                     total: chapters.length,
-                                    chapter: `Ch. ${chapter.chapterNumber}`
+                                    chapter: `Ch. ${chapter.chapterNumber}`,
+                                    error
                                 }
                             });
                             lastProgressUpdate = now;
@@ -522,13 +536,52 @@ export const useAppStore = create<AppState>((set, get) => ({
                     const totalPages = pages.length;
 
                     for (let i = 0; i < pages.length; i += CONCURRENCY) {
-                        if (cancelled) break;
+                        if (cancelled || cacheLimitReached) break;
                         const batch = pages.slice(i, i + CONCURRENCY);
                         const results = await Promise.all(batch.map(async page => {
-                            const success = await downloadPage(page);
-                            if (success) successfulPages++;
-                            return success;
+                            const result = await downloadPage(page);
+                            if (result === 'success') successfulPages++;
+                            if (result === 'limit') cacheLimitReached = true;
+                            return result;
                         }));
+
+                        // If cache limit reached, pause and wait for limit increase
+                        if (cacheLimitReached) {
+                            console.log('Cache limit reached - pausing prefetch');
+
+                            // Set error state
+                            updateProgress('Cache limit reached. Increase limit to continue.');
+
+                            // Poll for cache limit changes every 2 seconds
+                            const { useSettingsStore } = await import('../features/settings/stores/settingsStore');
+                            let resumed = false;
+
+                            while (!cancelled && !resumed) {
+                                await new Promise(r => setTimeout(r, 2000));
+
+                                // Check if user cancelled
+                                if (cancelled) break;
+
+                                // Check if cache size is now below limit
+                                const currentCacheSize = await window.electronAPI.cache.getSize();
+                                const currentLimit = useSettingsStore.getState().maxCacheSize;
+
+                                if (currentCacheSize < currentLimit) {
+                                    console.log('Cache limit increased, resuming prefetch');
+                                    cacheLimitReached = false;
+                                    resumed = true;
+                                    set({ prefetchProgress: { ...get().prefetchProgress, error: undefined } });
+                                }
+                            }
+
+                            // If cancelled during wait, break out
+                            if (cancelled) break;
+
+                            // Retry the current batch
+                            i -= CONCURRENCY;
+                            continue;
+                        }
+
                         updateProgress();
                     }
 

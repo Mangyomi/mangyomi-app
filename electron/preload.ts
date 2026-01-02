@@ -40,10 +40,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
             ipcRenderer.invoke('ext:install', repoUrl, extensionId),
         sideload: () => ipcRenderer.invoke('ext:sideload'),
         uninstall: (extensionId: string) => ipcRenderer.invoke('ext:uninstall', extensionId),
-        getPopularManga: (extensionId: string, page: number) =>
-            ipcRenderer.invoke('ext:getPopularManga', extensionId, page),
-        getLatestManga: (extensionId: string, page: number) =>
-            ipcRenderer.invoke('ext:getLatestManga', extensionId, page),
+        getFilters: (extensionId: string) => ipcRenderer.invoke('ext:getFilters', extensionId),
+        getPopularManga: (extensionId: string, page: number, filters?: Record<string, string | string[]>) =>
+            ipcRenderer.invoke('ext:getPopularManga', extensionId, page, filters),
+        getLatestManga: (extensionId: string, page: number, filters?: Record<string, string | string[]>) =>
+            ipcRenderer.invoke('ext:getLatestManga', extensionId, page, filters),
         searchManga: (extensionId: string, query: string, page: number) =>
             ipcRenderer.invoke('ext:searchManga', extensionId, query, page),
         getMangaDetails: (extensionId: string, mangaId: string) =>
@@ -75,8 +76,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     },
 
     cache: {
-        save: (url: string, extensionId: string, mangaId: string, chapterId: string) =>
-            ipcRenderer.invoke('cache:save', url, extensionId, mangaId, chapterId),
+        save: (url: string, extensionId: string, mangaId: string, chapterId: string, isPrefetch?: boolean) =>
+            ipcRenderer.invoke('cache:save', url, extensionId, mangaId, chapterId, isPrefetch ?? false),
         clear: (mangaId?: string) => ipcRenderer.invoke('cache:clear', mangaId),
         setLimit: (bytes: number) => ipcRenderer.invoke('cache:setLimit', bytes),
         getSize: () => ipcRenderer.invoke('cache:getSize') as Promise<number>,

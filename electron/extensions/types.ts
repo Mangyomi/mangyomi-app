@@ -33,6 +33,26 @@ export interface Chapter {
     uploadDate?: number;
 }
 
+export interface FilterOption {
+    value: string;
+    label: string;
+}
+
+export interface ExtensionFilter {
+    id: string;
+    label: string;
+    type: 'select' | 'tri-state';
+    options: FilterOption[];
+    default?: string | string[];
+}
+
+export interface TriStateFilterValue {
+    include: string[];
+    exclude: string[];
+}
+
+export type FilterValues = Record<string, string | string[] | TriStateFilterValue>;
+
 export interface MangaExtension {
     // Metadata
     id: string;
@@ -46,9 +66,12 @@ export interface MangaExtension {
     // Required headers for image requests
     getImageHeaders(): Record<string, string>;
 
+    // Filters (optional - extensions without filters return empty array)
+    getFilters?(): ExtensionFilter[];
+
     // Discovery
-    getPopularManga(page: number): Promise<MangaListResult>;
-    getLatestManga(page: number): Promise<MangaListResult>;
+    getPopularManga(page: number, filters?: FilterValues): Promise<MangaListResult>;
+    getLatestManga(page: number, filters?: FilterValues): Promise<MangaListResult>;
     searchManga(query: string, page: number): Promise<MangaListResult>;
 
     // Details
