@@ -63,6 +63,12 @@ function History() {
         });
     };
 
+    const handleOpenMangaDetails = (entry: HistoryEntry) => {
+        const [extensionId] = entry.manga_id.split(':');
+        const sourceMangaId = entry.manga_id.split(':').slice(1).join(':');
+        navigate(`/manga/${extensionId}/${encodeURIComponent(sourceMangaId)}`);
+    };
+
     if (history.length === 0) {
         return (
             <div className="history-page">
@@ -110,6 +116,10 @@ function History() {
                                             src={proxiedCoverUrl}
                                             alt={entry.manga_title}
                                             className="history-cover"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleOpenMangaDetails(entry);
+                                            }}
                                         />
                                         <div className="history-info">
                                             <h4 className="history-manga-title">{entry.manga_title}</h4>
