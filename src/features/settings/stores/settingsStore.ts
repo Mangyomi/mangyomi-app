@@ -9,6 +9,7 @@ interface SettingsState {
     prefetchChapters: number; // 0 = disabled, 1-4 = chapters to prefetch ahead/behind
     maxCacheSize: number; // in bytes
     disabledExtensions: Set<string>;
+    extensionOrder: string[]; // Ordered list of extension IDs for Browse page
     hideNsfwInLibrary: boolean;
     hideNsfwInHistory: boolean;
     hideNsfwInTags: boolean;
@@ -23,6 +24,7 @@ interface SettingsState {
     setMaxCacheSize: (size: number) => void;
     toggleExtension: (extensionId: string) => void;
     isExtensionEnabled: (extensionId: string) => boolean;
+    setExtensionOrder: (order: string[]) => void;
     setHideNsfwInLibrary: (value: boolean) => void;
     setHideNsfwInHistory: (value: boolean) => void;
     setHideNsfwInTags: (value: boolean) => void;
@@ -71,12 +73,12 @@ const applyTheme = (theme: Theme) => {
 };
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
-
     theme: 'dark',
     defaultReaderMode: 'vertical',
     prefetchChapters: 0,
     maxCacheSize: 1024 * 1024 * 1024, // 1GB
     disabledExtensions: new Set<string>(),
+    extensionOrder: [],
     hideNsfwInLibrary: false,
     hideNsfwInHistory: false,
     hideNsfwInTags: false,
@@ -123,6 +125,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
     isExtensionEnabled: (extensionId) => {
         return !get().disabledExtensions.has(extensionId);
+    },
+
+    setExtensionOrder: (order) => {
+        set({ extensionOrder: order });
+        saveToStorage({ extensionOrder: order } as any);
     },
 
     setHideNsfwInLibrary: (value) => {
@@ -215,6 +222,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         }
         if ((stored as any).developerMode !== undefined) {
             set({ developerMode: (stored as any).developerMode });
+        }
+        if ((stored as any).extensionOrder) {
+            set({ extensionOrder: (stored as any).extensionOrder });
         }
     },
 }));

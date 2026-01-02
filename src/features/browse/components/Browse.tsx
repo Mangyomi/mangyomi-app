@@ -23,15 +23,66 @@ function Browse() {
         loadMoreBrowse,
     } = useBrowseStore();
 
-    const { isExtensionEnabled } = useSettingsStore();
+    const { isExtensionEnabled, extensionOrder, setExtensionOrder } = useSettingsStore();
 
     const [searchQuery, setSearchQuery] = useState(storeSearchQuery);
     const [activeTab, setActiveTab] = useState<'popular' | 'latest'>(browseMode === 'latest' ? 'latest' : 'popular');
     const observerRef = useRef<IntersectionObserver | null>(null);
     const loadMoreRef = useRef<HTMLDivElement>(null);
+    const [draggedId, setDraggedId] = useState<string | null>(null);
 
     const enabledExtensions = extensions.filter(ext => isExtensionEnabled(ext.id));
     const libraryIds = new Set(library.map(m => `${m.source_id}:${m.source_manga_id}`));
+
+    // Sort extensions by saved order, putting unsorted ones at the end
+    const orderedExtensions = [...enabledExtensions].sort((a, b) => {
+        const aIndex = extensionOrder.indexOf(a.id);
+        const bIndex = extensionOrder.indexOf(b.id);
+        if (aIndex === -1 && bIndex === -1) return 0;
+        if (aIndex === -1) return 1;
+        if (bIndex === -1) return -1;
+        return aIndex - bIndex;
+    });
+
+    // Drag and drop handlers
+    const handleDragStart = (e: React.DragEvent, extId: string) => {
+        setDraggedId(extId);
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', extId);
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleDrop = (e: React.DragEvent, targetId: string) => {
+        e.preventDefault();
+        if (!draggedId || draggedId === targetId) {
+            setDraggedId(null);
+            return;
+        }
+
+        const currentOrder = orderedExtensions.map(ext => ext.id);
+        const draggedIndex = currentOrder.indexOf(draggedId);
+        const targetIndex = currentOrder.indexOf(targetId);
+
+        if (draggedIndex === -1 || targetIndex === -1) {
+            setDraggedId(null);
+            return;
+        }
+
+        // Reorder: remove dragged item and insert at target position
+        currentOrder.splice(draggedIndex, 1);
+        currentOrder.splice(targetIndex, 0, draggedId);
+
+        setExtensionOrder(currentOrder);
+        setDraggedId(null);
+    };
+
+    const handleDragEnd = () => {
+        setDraggedId(null);
+    };
 
     // Sync local search query with store (mostly for returning from other pages)
     useEffect(() => {
@@ -139,10 +190,10 @@ function Browse() {
 
             {/* Extension Selector */}
             <div className="extension-selector">
-                {enabledExtensions.map(ext => (
+                {orderedExtensions.map(ext => (
                     <button
                         key={ext.id}
-                        className={`extension-btn ${selectedExtension?.id === ext.id ? 'active' : ''}`}
+                        className={`extension-btn ${selectedExtension?.id === ext.id ? 'active' : ''} ${draggedId === ext.id ? 'dragging' : ''}`}
                         onClick={() => {
                             if (selectedExtension?.id !== ext.id) {
                                 // Clear browse store when switching extensions to avoid showing old data
@@ -150,6 +201,11 @@ function Browse() {
                                 selectExtension(ext);
                             }
                         }}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, ext.id)}
+                        onDragOver={handleDragOver}
+                        onDrop={(e) => handleDrop(e, ext.id)}
+                        onDragEnd={handleDragEnd}
                     >
                         <span className="extension-icon">
                             {ext.icon ? (
