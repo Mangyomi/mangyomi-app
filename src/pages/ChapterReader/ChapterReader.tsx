@@ -271,6 +271,13 @@ function ChapterReader() {
                 } else if (e.key === 'ArrowRight' && currentPageIndex < currentPages.length - 1) {
                     setCurrentPageIndex(currentPageIndex + 1);
                 }
+            } else {
+                // Vertical mode - Chapter navigation
+                if (e.key === 'ArrowLeft') {
+                    handlePrevChapter();
+                } else if (e.key === 'ArrowRight') {
+                    handleNextChapter();
+                }
             }
 
             // Handle scroll with arrow keys
@@ -293,12 +300,19 @@ function ChapterReader() {
     }, [readerMode, currentPageIndex, currentPages.length, navigate]);
 
     const handleGoBack = () => {
-        if (currentManga && extensionId) {
-            navigate(`/manga/${extensionId}/${currentManga.id}`);
-        } else if (locationState?.mangaId && extensionId) {
-            navigate(`/manga/${extensionId}/${encodeURIComponent(locationState.mangaId)}`);
+        // Use navigate(-1) to prevent history loops (Reader -> Detail -> Reader)
+        // Check if we have history to go back to
+        if (window.history.state && window.history.state.idx > 0) {
+            navigate(-1);
         } else {
-            navigate('/history');
+            // Fallback for direct access
+            if (currentManga && extensionId) {
+                navigate(`/manga/${extensionId}/${currentManga.id}`, { replace: true });
+            } else if (locationState?.mangaId && extensionId) {
+                navigate(`/manga/${extensionId}/${encodeURIComponent(locationState.mangaId)}`, { replace: true });
+            } else {
+                navigate('/history', { replace: true });
+            }
         }
     };
 
