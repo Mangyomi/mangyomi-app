@@ -32,8 +32,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--color-bg-tertiary);
     border-radius: var(--radius-md);
+    overflow: hidden;
 }
 
 .extension-details {
@@ -307,8 +307,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--color-bg-secondary);
     border-radius: var(--radius-sm);
+    overflow: hidden;
 }
 
 .available-ext-info {

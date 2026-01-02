@@ -74,9 +74,31 @@ export async function loadExtensions(extensionsPath: string): Promise<void> {
             // Use our custom loader instead of standard require
             const extModule: any = loadExtensionModule(indexPath);
 
+            // Resolve icon path - supports both legacy string and new object format
+            // Priority: SVG > PNG, URL > local file
+            let resolvedIcon: string | undefined;
+            if (manifest.icon) {
+                if (typeof manifest.icon === 'string') {
+                    // Legacy format: single string
+                    resolvedIcon = manifest.icon.startsWith('http')
+                        ? manifest.icon
+                        : path.join(extPath, manifest.icon);
+                } else {
+                    // New format: object with svg/png
+                    const iconObj = manifest.icon;
+                    // Prioritize SVG over PNG
+                    const iconFile = iconObj.svg || iconObj.png;
+                    if (iconFile) {
+                        resolvedIcon = iconFile.startsWith('http')
+                            ? iconFile
+                            : path.join(extPath, iconFile);
+                    }
+                }
+            }
+
             const extension: MangaExtension = {
                 ...manifest,
-                icon: manifest.icon ? path.join(extPath, manifest.icon) : undefined,
+                icon: resolvedIcon,
                 getImageHeaders: extModule.getImageHeaders,
                 getPopularManga: extModule.getPopularManga,
                 getLatestManga: extModule.getLatestManga,

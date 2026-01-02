@@ -59,12 +59,17 @@ export interface MangaExtension {
     getChapterPages(chapterId: string): Promise<string[]>;
 }
 
+export interface ExtensionIcon {
+    svg?: string;
+    png?: string;
+}
+
 export interface ExtensionManifest {
     id: string;
     name: string;
     version: string;
     baseUrl: string;
-    icon?: string;
+    icon?: ExtensionIcon | string; // Support both new object format and legacy string
     language: string;
     nsfw: boolean;
 }

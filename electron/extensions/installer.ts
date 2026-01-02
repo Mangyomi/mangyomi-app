@@ -157,12 +157,25 @@ export async function listAvailableExtensions(repoUrl: string): Promise<Availabl
         for (const folder of extensionFolders) {
             const manifest = readManifest(folder);
             if (manifest) {
-                // Construct raw GitHub URL for icon if it's a relative path
-                let iconUrl = manifest.icon;
-                if (manifest.icon && !manifest.icon.startsWith('http')) {
-                    const relativeIconPath = path.join(path.basename(folder), manifest.icon).replace(/\\/g, '/');
-                    // Assuming standard GitHub structure: https://raw.githubusercontent.com/owner/repo/branch/path/to/icon
-                    iconUrl = `https://raw.githubusercontent.com/${parsed.owner}/${parsed.repo}/${parsed.branch || 'main'}/${relativeIconPath}`;
+                let iconUrl: string | undefined;
+                if (manifest.icon) {
+                    let iconFile: string | undefined;
+
+                    if (typeof manifest.icon === 'string') {
+
+                        iconFile = manifest.icon;
+                    } else {
+                        iconFile = manifest.icon.svg || manifest.icon.png;
+                    }
+
+                    if (iconFile) {
+                        if (iconFile.startsWith('http')) {
+                            iconUrl = iconFile;
+                        } else {
+                            const relativeIconPath = path.join(path.basename(folder), iconFile).replace(/\\/g, '/');
+                            iconUrl = `https://raw.githubusercontent.com/${parsed.owner}/${parsed.repo}/${parsed.branch || 'main'}/${relativeIconPath}`;
+                        }
+                    }
                 }
 
                 extensions.push({

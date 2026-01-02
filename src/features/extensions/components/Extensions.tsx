@@ -292,19 +292,15 @@ function Extensions() {
                                                     src={getIconUrl(ext.icon) || ''}
                                                     alt={ext.name}
                                                     className="ext-icon-img"
-                                                    onError={(e) => {
-                                                        const target = e.target as HTMLImageElement;
-                                                        target.style.display = 'none';
-                                                    }}
                                                 />
-                                            ) : null}
-                                            <Icons.Book
-                                                width={24}
-                                                height={24}
-                                                opacity={0.5}
-                                                className="fallback-icon-svg"
-                                                style={{ display: ext.icon ? 'block' : 'block' }}
-                                            />
+                                            ) : (
+                                                <Icons.Book
+                                                    width={24}
+                                                    height={24}
+                                                    opacity={0.5}
+                                                    className="fallback-icon-svg"
+                                                />
+                                            )}
                                         </div>
                                         <div className="available-ext-info">
                                             <div className="available-ext-name">
@@ -388,12 +384,10 @@ function Extensions() {
                                             src={getIconUrl(ext.icon) || ''}
                                             alt={ext.name}
                                             className="ext-icon-img"
-                                            onError={(e) => {
-                                                (e.target as HTMLImageElement).style.display = 'none';
-                                            }}
                                         />
-                                    ) : null}
-                                    <Icons.Book className="fallback-icon-svg" width={24} height={24} opacity={0.5} />
+                                    ) : (
+                                        <Icons.Book className="fallback-icon-svg" width={24} height={24} opacity={0.5} />
+                                    )}
                                 </div>
                                 <div className="extension-details">
                                     <h3 className="extension-title">
