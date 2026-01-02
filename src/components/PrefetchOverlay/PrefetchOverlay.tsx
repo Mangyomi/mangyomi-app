@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
-import { useAppStore } from '../stores/appStore';
+import { useAppStore } from '../../stores/appStore';
 import './PrefetchOverlay.css'; // Reusing or creating new css
 
 const PrefetchOverlay: React.FC = () => {

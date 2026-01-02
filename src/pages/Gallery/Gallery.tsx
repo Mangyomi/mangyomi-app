@@ -1,13 +1,13 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Icons } from '../components/Icons';
-import { useAppStore, Manga } from '../stores/appStore';
-import { useSettingsStore } from '../stores/settingsStore';
-import { useDialog } from '../components/ConfirmModal/DialogContext';
-import MangaCard from '../components/MangaCard';
-import CustomDropdown from '../components/CustomDropdown/CustomDropdown';
-import ContextMenu, { ContextMenuItem } from '../components/ContextMenu/ContextMenu';
-import TagSelector from '../components/TagSelector';
+import { Icons } from '../../components/Icons';
+import { useAppStore, Manga } from '../../stores/appStore';
+import { useSettingsStore } from '../../stores/settingsStore';
+import { useDialog } from '../../components/ConfirmModal/DialogContext';
+import MangaCard from '../../components/MangaCard';
+import CustomDropdown from '../../components/CustomDropdown/CustomDropdown';
+import ContextMenu, { ContextMenuItem } from '../../components/ContextMenu/ContextMenu';
+import TagSelector from '../../components/TagSelector';
 import './Gallery.css';
 
 interface ContextMenuState {

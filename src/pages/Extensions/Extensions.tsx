@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { useAppStore } from '../stores/appStore';
-import { useSettingsStore } from '../stores/settingsStore';
-import { Icons } from '../components/Icons';
+import { useAppStore } from '../../stores/appStore';
+import { useSettingsStore } from '../../stores/settingsStore';
+import { Icons } from '../../components/Icons';
 import './Extensions.css';
 
 const isUpdateAvailable = (current: string, latest: string) => {

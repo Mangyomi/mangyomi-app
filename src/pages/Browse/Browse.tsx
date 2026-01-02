@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useAppStore } from '../stores/appStore';
-import { useSettingsStore } from '../stores/settingsStore';
-import MangaCard from '../components/MangaCard';
-import { Icons } from '../components/Icons';
+import { useAppStore } from '../../stores/appStore';
+import { useSettingsStore } from '../../stores/settingsStore';
+import MangaCard from '../../components/MangaCard';
+import { Icons } from '../../components/Icons';
 import './Browse.css';
 
 function Browse() {

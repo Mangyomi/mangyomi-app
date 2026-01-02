@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAppStore } from '../stores/appStore';
-import { useSettingsStore } from '../stores/settingsStore';
-import { useDialog } from '../components/ConfirmModal/DialogContext';
-import { Icons } from '../components/Icons';
+import { useAppStore } from '../../stores/appStore';
+import { useSettingsStore } from '../../stores/settingsStore';
+import { useDialog } from '../../components/ConfirmModal/DialogContext';
+import { Icons } from '../../components/Icons';
 import './History.css';
 
 function History() {

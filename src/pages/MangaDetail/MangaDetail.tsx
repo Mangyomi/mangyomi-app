@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAppStore } from '../stores/appStore';
-import { useAniListStore } from '../stores/anilistStore';
-import { useDialog } from '../components/ConfirmModal/DialogContext';
+import { useAppStore } from '../../stores/appStore';
+import { useAniListStore } from '../../stores/anilistStore';
+import { useDialog } from '../../components/ConfirmModal/DialogContext';
 import { useRef } from 'react';
-import { useSettingsStore } from '../stores/settingsStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import './MangaDetail.css';
 
-import TagSelector from '../components/TagSelector';
-import AniListLinkModal from '../components/AniListLinkModal/AniListLinkModal';
-import { Icons } from '../components/Icons';
-import Tooltip from '../components/Tooltip';
+import TagSelector from '../../components/TagSelector';
+import AniListLinkModal from '../../components/AniListLinkModal/AniListLinkModal';
+import { Icons } from '../../components/Icons';
+import Tooltip from '../../components/Tooltip';
 
 function MangaDetail() {
     const { extensionId, mangaId } = useParams<{ extensionId: string; mangaId: string }>();

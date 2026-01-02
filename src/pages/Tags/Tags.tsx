@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useAppStore, Tag, Manga } from '../stores/appStore';
-import { useSettingsStore } from '../stores/settingsStore';
-import MangaCard from '../components/MangaCard/MangaCard';
-import ConfirmModal from '../components/ConfirmModal/ConfirmModal';
-import { Icons } from '../components/Icons';
+import { useAppStore, Tag, Manga } from '../../stores/appStore';
+import { useSettingsStore } from '../../stores/settingsStore';
+import MangaCard from '../../components/MangaCard/MangaCard';
+import ConfirmModal from '../../components/ConfirmModal/ConfirmModal';
+import { Icons } from '../../components/Icons';
 import './Tags.css';
 
 const TAG_COLORS = [

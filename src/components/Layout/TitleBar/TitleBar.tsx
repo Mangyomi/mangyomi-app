@@ -1,7 +1,7 @@
 import { useMatch, useNavigate, useLocation } from 'react-router-dom';
-import { useAppStore } from '../../stores/appStore';
+import { useAppStore } from '../../../stores/appStore';
 
-import { Icons } from '../Icons';
+import { Icons } from '../../Icons';
 import './TitleBar.css';
 import { useState } from 'react';
 

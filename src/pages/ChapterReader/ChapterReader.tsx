@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { useAppStore } from '../stores/appStore';
-import { useSettingsStore } from '../stores/settingsStore';
+import { useAppStore } from '../../stores/appStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import './ChapterReader.css';
 
 function ChapterReader() {

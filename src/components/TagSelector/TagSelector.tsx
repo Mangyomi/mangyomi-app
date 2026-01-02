@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useAppStore } from '../stores/appStore';
-import { Icons } from './Icons';
+import { useAppStore } from '../../stores/appStore';
+import { Icons } from '../Icons';
 import './TagSelector.css';
 
 interface TagSelectorProps {

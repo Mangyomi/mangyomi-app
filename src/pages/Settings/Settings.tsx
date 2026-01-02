@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useSettingsStore, Theme, ReaderMode } from '../stores/settingsStore';
-import { useAniListStore } from '../stores/anilistStore';
-import { useDialog } from '../components/ConfirmModal/DialogContext';
-import RangeSlider from '../components/RangeSlider/RangeSlider';
+import { useSettingsStore, Theme, ReaderMode } from '../../stores/settingsStore';
+import { useAniListStore } from '../../stores/anilistStore';
+import { useDialog } from '../../components/ConfirmModal/DialogContext';
+import RangeSlider from '../../components/RangeSlider/RangeSlider';
 import './Settings.css';
 
 // Icons
@@ -473,7 +473,7 @@ function Settings() {
                     </div>
                     <div className="setting-control">
                         <button className="action-btn" onClick={async () => {
-                            const { debugLogger } = await import('../utils/debugLogger');
+                            const { debugLogger } = await import('../../utils/debugLogger');
                             const consoleLogs = debugLogger.getFormattedLogs();
                             const networkActivity = debugLogger.getFormattedNetwork();
                             const result = await window.electronAPI.app.createDumpLog(consoleLogs, networkActivity);
