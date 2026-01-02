@@ -13,9 +13,15 @@ interface MangaCardProps {
     totalChapters?: number;
     readChapters?: number;
     onContextMenu?: (e: React.MouseEvent, manga: { id: string; title: string; extensionId: string }) => void;
+    action?: {
+        icon: React.ReactNode;
+        onClick: (e: React.MouseEvent, manga: { id: string; title: string; extensionId: string }) => void;
+        variant?: 'default' | 'danger';
+        title?: string;
+    };
 }
 
-function MangaCard({ id, title, coverUrl, extensionId, index = 0, inLibrary, totalChapters, readChapters, onContextMenu }: MangaCardProps) {
+function MangaCard({ id, title, coverUrl, extensionId, index = 0, inLibrary, totalChapters, readChapters, onContextMenu, action }: MangaCardProps) {
     const navigate = useNavigate();
     const [imageError, setImageError] = useState(false);
 
@@ -60,6 +66,20 @@ function MangaCard({ id, title, coverUrl, extensionId, index = 0, inLibrary, tot
                 {inLibrary && (
                     <div className="manga-card-badge">
                         <span>{isFullyRead ? 'READ' : 'IN LIBRARY'}</span>
+                    </div>
+                )}
+                {action && (
+                    <div className="manga-card-actions">
+                        <button
+                            className={`manga-card-action-btn ${action.variant || 'default'}`}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                action.onClick(e, { id, title, extensionId });
+                            }}
+                            title={action.title}
+                        >
+                            {action.icon}
+                        </button>
                     </div>
                 )}
             </div>

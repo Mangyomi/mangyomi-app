@@ -189,7 +189,7 @@ function Gallery() {
             <div className="page-header">
                 <div>
                     <h1 className="page-title">Library</h1>
-                    <p className="page-subtitle">{library.length} manga in your collection</p>
+                    <p className="page-subtitle">{filteredLibrary.length} manga in your collection</p>
                 </div>
             </div>
 

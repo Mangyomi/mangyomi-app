@@ -13,8 +13,46 @@ const TAG_COLORS = [
 ];
 
 function Tags() {
-    const { tags, loadTags, createTag, updateTag, deleteTag, getMangaByTag, extensions } = useAppStore();
+    const { tags, loadTags, createTag, updateTag, deleteTag, getMangaByTag, removeTagFromManga, extensions } = useAppStore();
     const { hideNsfwInTags, hideNsfwCompletely } = useSettingsStore();
+
+    // State for NSFW-filtered tag counts
+    const [filteredTagCounts, setFilteredTagCounts] = useState<Map<number, number>>(new Map());
+
+    // Compute NSFW extension set
+    const nsfwExtensions = useMemo(() => new Set(
+        extensions.filter(ext => ext.nsfw).map(ext => ext.id)
+    ), [extensions]);
+
+    // Load filtered counts for all tags when NSFW settings are active
+    useEffect(() => {
+        const loadFilteredCounts = async () => {
+            if (!hideNsfwCompletely && !hideNsfwInTags) {
+                // No filtering needed - use original counts
+                setFilteredTagCounts(new Map(tags.map(tag => [tag.id, tag.count || 0])));
+                return;
+            }
+
+            // Fetch manga for each tag and count non-NSFW ones
+            const counts = new Map<number, number>();
+            for (const tag of tags) {
+                try {
+                    const mangaList = await getMangaByTag(tag.id);
+                    const filteredCount = mangaList.filter(
+                        (manga: Manga) => !nsfwExtensions.has(manga.source_id)
+                    ).length;
+                    counts.set(tag.id, filteredCount);
+                } catch {
+                    counts.set(tag.id, tag.count || 0);
+                }
+            }
+            setFilteredTagCounts(counts);
+        };
+
+        if (tags.length > 0) {
+            loadFilteredCounts();
+        }
+    }, [tags, hideNsfwCompletely, hideNsfwInTags, nsfwExtensions, getMangaByTag]);
 
     useEffect(() => {
         loadTags();
@@ -35,6 +73,7 @@ function Tags() {
     const [tagManga, setTagManga] = useState<Manga[]>([]);
     const [loadingManga, setLoadingManga] = useState(false);
 
+
     // Open create modal
     const openCreateModal = () => {
         setEditingTag(null);
@@ -50,6 +89,38 @@ function Tags() {
         setNewTagName(tag.name);
         setNewTagColor(tag.color);
         setIsCreating(true);
+    };
+
+    const handleRemoveFromTag = async (e: React.MouseEvent, manga: any) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!selectedTag) return;
+
+        // Find full manga object from list
+        const fullManga = tagManga.find(m => m.source_manga_id === manga.id && m.source_id === manga.extensionId);
+
+        if (fullManga) {
+            try {
+                await removeTagFromManga(fullManga.id, selectedTag.id);
+
+                // Remove from local list immediately
+                setTagManga(prev => prev.filter(m => m.id !== fullManga.id));
+
+                // Update count in filtered counts map
+                setFilteredTagCounts(prev => {
+                    const newMap = new Map(prev);
+                    const currentCount = newMap.get(selectedTag.id) || 0;
+                    newMap.set(selectedTag.id, Math.max(0, currentCount - 1));
+                    return newMap;
+                });
+
+                // Reload tags to sync global counts
+                loadTags();
+            } catch (error) {
+                console.error('Failed to remove tag from manga:', error);
+            }
+        }
     };
 
     const handleSaveTag = async (e: React.FormEvent) => {
@@ -129,7 +200,7 @@ function Tags() {
                                 />
                                 {selectedTag.name}
                             </h1>
-                            <p className="page-subtitle">{tagManga.length} manga</p>
+                            <p className="page-subtitle">{filteredTagManga.length} manga</p>
                         </div>
                     </div>
                 </div>
@@ -155,6 +226,12 @@ function Tags() {
                                 title={manga.title}
                                 coverUrl={manga.cover_url}
                                 extensionId={manga.source_id}
+                                action={{
+                                    icon: <Icons.Trash width={16} height={16} />,
+                                    onClick: handleRemoveFromTag,
+                                    variant: 'danger',
+                                    title: 'Remove from Tag'
+                                }}
                             />
                         ))}
                     </div>
@@ -255,7 +332,7 @@ function Tags() {
                             />
                             <div className="tag-info">
                                 <h3 className="tag-name">{tag.name}</h3>
-                                <p className="tag-count">{tag.count || 0} manga</p>
+                                <p className="tag-count">{filteredTagCounts.get(tag.id) ?? tag.count ?? 0} manga</p>
                             </div>
 
                             <div className="tag-actions">

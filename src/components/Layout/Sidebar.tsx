@@ -1,11 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAppStore } from '../../stores/appStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { Logo } from '../Logo';
 import './Sidebar.css';
 
 // SVG Icons
 const Icons = {
+    // ... (icons remain unchanged, skipping for brevity in replacement if possible, but replace_file_content needs context)
     Library: () => (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
@@ -53,11 +55,26 @@ const MIN_WIDTH = 200; // Min expanded width
 const MAX_WIDTH = 480;
 
 function Sidebar() {
-    const { library } = useAppStore();
+    const { library, extensions } = useAppStore();
+    const { hideNsfwInLibrary, hideNsfwCompletely } = useSettingsStore();
+
     // Default to expanded, read from local storage if needed in future
     const [width, setWidth] = useState(SIDEBAR_WIDTH);
     const [isResizing, setIsResizing] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
+
+    // Compute filtered library count
+    const filteredLibraryCount = useMemo(() => {
+        if (!hideNsfwCompletely && !hideNsfwInLibrary) {
+            return library.length;
+        }
+
+        const nsfwExtensions = new Set(
+            extensions.filter(ext => ext.nsfw).map(ext => ext.id)
+        );
+
+        return library.filter(m => !nsfwExtensions.has(m.source_id)).length;
+    }, [library, extensions, hideNsfwCompletely, hideNsfwInLibrary]);
 
     // Check local storage on mount
     useEffect(() => {
@@ -73,7 +90,7 @@ function Sidebar() {
     }, []);
 
     const navItems = [
-        { path: '/', label: 'Library', icon: Icons.Library, count: library.length },
+        { path: '/', label: 'Library', icon: Icons.Library, count: filteredLibraryCount },
         { path: '/browse', label: 'Browse', icon: Icons.Browse },
         { path: '/history', label: 'History', icon: Icons.History },
         { path: '/tags', label: 'Tags', icon: Icons.Tags },

@@ -58,6 +58,52 @@
     padding: var(--spacing-sm) var(--spacing-md);
 }
 
+/* Hover Actions Overlay */
+.manga-card-actions {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: var(--spacing-sm);
+    display: flex;
+    justify-content: flex-end;
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6) 0%, transparent 100%);
+    pointer-events: none;
+    /* Let clicks pass through if not on buttons */
+}
+
+.manga-card:hover .manga-card-actions {
+    opacity: 1;
+}
+
+.manga-card-action-btn {
+    pointer-events: auto;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.manga-card-action-btn:hover {
+    background: var(--color-bg-elevated);
+    transform: scale(1.1);
+}
+
+.manga-card-action-btn.danger:hover {
+    background: var(--color-error);
+    border-color: var(--color-error);
+}
+
 .manga-card-title {
     font-size: var(--font-size-sm);
     font-weight: 500;
