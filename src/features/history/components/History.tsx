@@ -1,13 +1,16 @@
 import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAppStore } from '../../stores/appStore';
-import { useSettingsStore } from '../../stores/settingsStore';
-import { useDialog } from '../../components/ConfirmModal/DialogContext';
-import { Icons } from '../../components/Icons';
+import { useAppStore } from '../../../stores/appStore';
+import { useSettingsStore } from '../../settings/stores/settingsStore';
+import { useHistoryStore, HistoryEntry } from '../stores/historyStore';
+import { useExtensionStore } from '../../extensions/stores/extensionStore';
+import { useDialog } from '../../../components/ConfirmModal/DialogContext';
+import { Icons } from '../../../components/Icons';
 import './History.css';
 
 function History() {
-    const { history, loadHistory, removeFromHistory, extensions } = useAppStore();
+    const { history, loadHistory, removeFromHistory } = useHistoryStore();
+    const { extensions } = useExtensionStore();
     const { disabledExtensions, hideNsfwInHistory, hideNsfwCompletely } = useSettingsStore();
     const navigate = useNavigate();
     const location = useLocation();
@@ -42,9 +45,9 @@ function History() {
         }
         groups[date].push(entry);
         return groups;
-    }, {} as Record<string, typeof history>);
+    }, {} as Record<string, HistoryEntry[]>);
 
-    const handleContinueReading = (entry: typeof history[0]) => {
+    const handleContinueReading = (entry: HistoryEntry) => {
         const [extensionId] = entry.manga_id.split(':');
         const sourceMangaId = entry.manga_id.split(':').slice(1).join(':');
 

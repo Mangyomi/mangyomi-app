@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { useAniListStore } from './anilistStore';
+import { useLibraryStore } from '../features/library/stores/libraryStore';
+import { Extension } from '@/features/extensions/stores/extensionStore';
 
 export interface Manga {
     id: string;
@@ -42,16 +44,6 @@ export interface Tag {
     count?: number;
 }
 
-export interface Extension {
-    id: string;
-    name: string;
-    version: string;
-    baseUrl: string;
-    icon?: string;
-    language: string;
-    nsfw: boolean;
-}
-
 export interface HistoryEntry {
     id: number;
     manga_id: string;
@@ -66,28 +58,11 @@ export interface HistoryEntry {
 }
 
 interface AppState {
-    library: Manga[];
-    loadingLibrary: boolean;
 
-    extensions: Extension[];
-    selectedExtension: Extension | null;
-
-    browseManga: any[];
-    browseLoading: boolean;
-    browseHasMore: boolean;
-    browsePage: number;
-    browseMode: 'popular' | 'latest' | 'search';
-    searchQuery: string;
 
     currentManga: any | null;
     currentChapters: Chapter[];
-    currentPages: string[];
-    currentPageIndex: number;
 
-    history: HistoryEntry[];
-
-    tags: Tag[];
-    selectedTag: Tag | null;
 
     captchaUrl: string | null;
     captchaCallback: (() => void) | null;
@@ -95,27 +70,8 @@ interface AppState {
     prefetchedChapters: Map<string, string[]>;
     prefetchInProgress: Set<string>;
 
-    loadLibrary: () => Promise<void>;
-    loadExtensions: () => Promise<void>;
-    selectExtension: (ext: Extension) => void;
-    browseMangaList: (mode: 'popular' | 'latest', page?: number) => Promise<void>;
-    searchMangaList: (query: string, page?: number) => Promise<void>;
-    loadMoreBrowse: () => Promise<void>;
     loadMangaDetails: (extensionId: string, mangaId: string) => Promise<void>;
     loadChapters: (extensionId: string, mangaId: string) => Promise<void>;
-    getMangaByTag: (tagId: number) => Promise<any[]>;
-    loadChapterPages: (extensionId: string, chapterId: string) => Promise<void>;
-    addToLibrary: (manga: any, extensionId: string) => Promise<void>;
-    removeFromLibrary: (mangaId: string) => Promise<void>;
-    loadHistory: () => Promise<void>;
-    removeFromHistory: (mangaId: string) => Promise<void>;
-    loadTags: () => Promise<void>;
-    createTag: (name: string, color: string) => Promise<void>;
-    updateTag: (id: number, name: string, color: string) => Promise<void>;
-    deleteTag: (tagId: number) => Promise<void>;
-    addTagToManga: (mangaId: string, tagId: number) => Promise<void>;
-    removeTagFromManga: (mangaId: string, tagId: number) => Promise<void>;
-    setCurrentPageIndex: (index: number) => void;
     markChapterRead: (chapterId: string, pageNumber?: number) => Promise<void>;
     markChapterUnread: (chapterId: string) => Promise<void>;
     markChaptersRead: (chapterIds: string[]) => Promise<void>;
@@ -135,23 +91,8 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
-    library: [],
-    loadingLibrary: false,
-    extensions: [],
-    selectedExtension: null,
-    browseManga: [],
-    browseLoading: false,
-    browseHasMore: true,
-    browsePage: 1,
-    browseMode: 'popular',
-    searchQuery: '',
     currentManga: null,
     currentChapters: [],
-    currentPages: [],
-    currentPageIndex: 0,
-    history: [],
-    tags: [],
-    selectedTag: null,
     captchaUrl: null,
     captchaCallback: null,
     prefetchedChapters: new Map(),
@@ -163,111 +104,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     prefetchProgress: { current: 0, total: 0, chapter: '' },
     cancelPrefetch: () => { }, // placeholder, replaced in startPrefetch
 
-    loadLibrary: async () => {
-        set({ loadingLibrary: true });
-        try {
-            const library = await window.electronAPI.db.getAllManga();
-            set({ library, loadingLibrary: false });
-        } catch (error) {
-            console.error('Failed to load library:', error);
-            set({ loadingLibrary: false });
-        }
-    },
-
-    loadExtensions: async () => {
-        try {
-            const extensions = await window.electronAPI.extensions.getAll();
-            set({ extensions });
-            if (extensions.length > 0 && !get().selectedExtension) {
-                set({ selectedExtension: extensions[0] });
-            }
-        } catch (error) {
-            console.error('Failed to load extensions:', error);
-        }
-    },
-
-    selectExtension: (ext) => {
-        set({
-            selectedExtension: ext,
-            browseManga: [],
-            browsePage: 1,
-            browseHasMore: true,
-            browseMode: 'popular',
-            searchQuery: '',
-        });
-    },
-
-    browseMangaList: async (mode, page = 1) => {
-        const ext = get().selectedExtension;
-        if (!ext) return;
-
-        set({ browseLoading: true, browseMode: mode, searchQuery: '' });
-
-        try {
-            const result = mode === 'popular'
-                ? await window.electronAPI.extensions.getPopularManga(ext.id, page)
-                : await window.electronAPI.extensions.getLatestManga(ext.id, page);
-
-            set({
-                browseManga: page === 1 ? result.manga : [...get().browseManga, ...result.manga],
-                browseHasMore: result.hasNextPage,
-                browsePage: page,
-                browseLoading: false,
-            });
-        } catch (error: any) {
-            console.error('Failed to browse manga:', error);
-            set({ browseLoading: false });
-
-            const errorMsg = error?.message || '';
-            if (errorMsg.includes('fetch failed') || errorMsg.includes('403') || errorMsg.includes('503')) {
-                get().showCaptcha(ext.baseUrl, () => {
-                    get().browseMangaList(mode, page);
-                });
-            }
-        }
-    },
-
-    searchMangaList: async (query, page = 1) => {
-        const ext = get().selectedExtension;
-        if (!ext || !query.trim()) return;
-
-        set({ browseLoading: true, browseMode: 'search', searchQuery: query });
-
-        try {
-            const result = await window.electronAPI.extensions.searchManga(ext.id, query, page);
-
-            set({
-                browseManga: page === 1 ? result.manga : [...get().browseManga, ...result.manga],
-                browseHasMore: result.hasNextPage,
-                browsePage: page,
-                browseLoading: false,
-            });
-        } catch (error: any) {
-            console.error('Failed to search manga:', error);
-            set({ browseLoading: false });
-
-            const errorMsg = error?.message || '';
-            if (errorMsg.includes('fetch failed') || errorMsg.includes('403') || errorMsg.includes('503')) {
-                get().showCaptcha(ext.baseUrl, () => {
-                    get().searchMangaList(query, page);
-                });
-            }
-        }
-    },
-
-    loadMoreBrowse: async () => {
-        const { browseMode, browsePage, searchQuery, browseHasMore, browseLoading } = get();
-
-        if (browseLoading || !browseHasMore) return;
-
-        if (browseMode === 'search') {
-            await get().searchMangaList(searchQuery, browsePage + 1);
-        } else {
-            await get().browseMangaList(browseMode, browsePage + 1);
-        }
-    },
-
-    loadMangaDetails: async (extensionId, mangaId) => {
+    loadMangaDetails: async (extensionId: string, mangaId: string) => {
         try {
             const details = await window.electronAPI.extensions.getMangaDetails(extensionId, mangaId);
             set({ currentManga: { ...details, extensionId } });
@@ -276,7 +113,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         }
     },
 
-    loadChapters: async (extensionId, mangaId) => {
+    loadChapters: async (extensionId: string, mangaId: string) => {
         try {
             const extChapters = await window.electronAPI.extensions.getChapterList(extensionId, mangaId);
 
@@ -296,7 +133,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
                 try {
                     await window.electronAPI.db.addChapters(dbChaptersToSync);
-                    get().loadLibrary();
+                    await useLibraryStore.getState().loadLibrary();
                 } catch (syncError) {
                     console.warn('Failed to sync chapters to DB:', syncError);
                 }
@@ -323,141 +160,9 @@ export const useAppStore = create<AppState>((set, get) => ({
         }
     },
 
-    getMangaByTag: async (tagId) => {
-        try {
-            return await window.electronAPI.db.getMangaByTag(tagId);
-        } catch (error) {
-            console.error('Failed to get manga by tag:', error);
-            return [];
-        }
-    },
 
-    loadChapterPages: async (extensionId, chapterId) => {
-        const cached = get().prefetchedChapters.get(chapterId);
-        if (cached && cached.length > 0) {
-            set({ currentPages: cached, currentPageIndex: 0 });
-            return;
-        }
 
-        try {
-            const pages = await window.electronAPI.extensions.getChapterPages(extensionId, chapterId);
-            set({ currentPages: pages, currentPageIndex: 0 });
-        } catch (error) {
-            console.error('Failed to load chapter pages:', error);
-        }
-    },
 
-    addToLibrary: async (manga, extensionId) => {
-        try {
-            const sourceId = extensionId || manga.extensionId || manga.source_id;
-
-            if (!sourceId) {
-                console.error('addToLibrary: Missing extensionId/source_id', { manga, extensionId });
-                throw new Error('Missing source_id for manga');
-            }
-
-            const id = `${sourceId}:${manga.id}`;
-            await window.electronAPI.db.addManga({
-                id,
-                source_id: sourceId,
-                source_manga_id: manga.id,
-                title: manga.title,
-                cover_url: manga.coverUrl,
-                author: manga.author || '',
-                artist: manga.artist || '',
-                description: manga.description || '',
-                status: manga.status || 'unknown',
-            });
-            await get().loadLibrary();
-        } catch (error) {
-            console.error('Failed to add to library:', error);
-        }
-    },
-
-    removeFromLibrary: async (mangaId) => {
-        try {
-            await window.electronAPI.db.deleteManga(mangaId);
-            await get().loadLibrary();
-        } catch (error) {
-            console.error('Failed to remove from library:', error);
-        }
-    },
-
-    loadHistory: async () => {
-        try {
-            const history = await window.electronAPI.db.getHistory(50);
-            set({ history });
-        } catch (error) {
-            console.error('Failed to load history:', error);
-        }
-    },
-
-    removeFromHistory: async (mangaId: string) => {
-        try {
-            await window.electronAPI.db.deleteHistory(mangaId);
-            await get().loadHistory();
-        } catch (error) {
-            console.error('Failed to remove from history:', error);
-        }
-    },
-
-    loadTags: async () => {
-        try {
-            const tags = await window.electronAPI.db.getTags();
-            set({ tags });
-        } catch (error) {
-            console.error('Failed to load tags:', error);
-        }
-    },
-
-    createTag: async (name, color) => {
-        try {
-            await window.electronAPI.db.createTag(name, color);
-            await get().loadTags();
-        } catch (error) {
-            console.error('Failed to create tag:', error);
-        }
-    },
-
-    updateTag: async (id, name, color) => {
-        try {
-            await window.electronAPI.db.updateTag(id, name, color);
-            await get().loadTags();
-        } catch (error) {
-            console.error('Failed to update tag:', error);
-        }
-    },
-
-    deleteTag: async (tagId) => {
-        try {
-            await window.electronAPI.db.deleteTag(tagId);
-            await get().loadTags();
-        } catch (error) {
-            console.error('Failed to delete tag:', error);
-        }
-    },
-
-    addTagToManga: async (mangaId, tagId) => {
-        try {
-            await window.electronAPI.db.addTagToManga(mangaId, tagId);
-            await get().loadTags();
-        } catch (error) {
-            console.error('Failed to add tag to manga:', error);
-        }
-    },
-
-    removeTagFromManga: async (mangaId, tagId) => {
-        try {
-            await window.electronAPI.db.removeTagFromManga(mangaId, tagId);
-            await get().loadTags();
-        } catch (error) {
-            console.error('Failed to remove tag from manga:', error);
-        }
-    },
-
-    setCurrentPageIndex: (index) => {
-        set({ currentPageIndex: index });
-    },
 
     markChapterRead: async (chapterId, pageNumber = 0) => {
         const { currentManga, currentChapters } = get();
@@ -475,14 +180,14 @@ export const useAppStore = create<AppState>((set, get) => ({
                 )
             });
 
-            get().loadLibrary();
+            await useLibraryStore.getState().loadLibrary();
 
-            get().loadLibrary();
+            await useLibraryStore.getState().loadLibrary();
 
             // Sync with AniList
             const extensionId = currentManga.extensionId || currentManga.source_id;
             const dbMangaId = `${extensionId}:${currentManga.id}`;
-            const libraryEntry = get().library.find(m => m.id === dbMangaId);
+            const libraryEntry = useLibraryStore.getState().library.find(m => m.id === dbMangaId);
 
             if (libraryEntry?.anilist_id) {
                 await useAniListStore.getState().syncProgress(dbMangaId);
@@ -536,7 +241,7 @@ export const useAppStore = create<AppState>((set, get) => ({
                 )
             });
 
-            get().loadLibrary();
+            await useLibraryStore.getState().loadLibrary();
 
             // Sync with AniList
             if (currentManga && (currentManga.anilist_id || currentManga.anilistId)) {
@@ -588,7 +293,7 @@ export const useAppStore = create<AppState>((set, get) => ({
                 )
             });
 
-            get().loadLibrary();
+            await useLibraryStore.getState().loadLibrary();
 
             // Sync with AniList
             if (currentManga && (currentManga.anilist_id || currentManga.anilistId)) {
@@ -615,7 +320,7 @@ export const useAppStore = create<AppState>((set, get) => ({
                 )
             });
 
-            get().loadLibrary();
+            await useLibraryStore.getState().loadLibrary();
 
         } catch (e) {
             console.error('Failed to bulk mark unread:', e);
@@ -715,7 +420,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
         try {
             // Import settings store
-            const { useSettingsStore } = await import('./settingsStore');
+            const { useSettingsStore } = await import('../features/settings/stores/settingsStore');
             const maxCacheSize = useSettingsStore.getState().maxCacheSize; // Access state directly
             // const dialog = require('@electron/remote').dialog; // Use alert for simplicity in store for now
 

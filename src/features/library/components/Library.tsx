@@ -1,14 +1,16 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Icons } from '../../components/Icons';
-import { useAppStore, Manga } from '../../stores/appStore';
-import { useSettingsStore } from '../../stores/settingsStore';
-import { useDialog } from '../../components/ConfirmModal/DialogContext';
-import MangaCard from '../../components/MangaCard';
-import CustomDropdown from '../../components/CustomDropdown/CustomDropdown';
-import ContextMenu, { ContextMenuItem } from '../../components/ContextMenu/ContextMenu';
-import TagSelector from '../../components/TagSelector';
-import './Gallery.css';
+import { Icons } from '../../../components/Icons';
+import { useLibraryStore, Manga } from '../stores/libraryStore';
+import { useTagStore } from '../../tags/stores/tagStore';
+import { useExtensionStore } from '../../extensions/stores/extensionStore';
+import { useSettingsStore } from '../../settings/stores/settingsStore';
+import { useDialog } from '../../../components/ConfirmModal/DialogContext';
+import MangaCard from '../../../components/MangaCard';
+import CustomDropdown from '../../../components/CustomDropdown/CustomDropdown';
+import ContextMenu, { ContextMenuItem } from '../../../components/ContextMenu/ContextMenu';
+import TagSelector from '../../../components/TagSelector';
+import './Library.css';
 
 interface ContextMenuState {
     visible: boolean;
@@ -17,9 +19,12 @@ interface ContextMenuState {
     manga: { id: string; title: string; extensionId: string } | null;
 }
 
-function Gallery() {
-    const { library, loadingLibrary, tags, extensions, removeFromLibrary, loadLibrary } = useAppStore();
+function Library() {
+    const { library, loadingLibrary, removeFromLibrary } = useLibraryStore();
+    const { tags } = useTagStore();
+    const { extensions } = useExtensionStore();
     const { hideNsfwInLibrary, hideNsfwInTags, hideNsfwCompletely } = useSettingsStore();
+
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedTagId, setSelectedTagId] = useState<number | null>(null);
     const [sortBy, setSortBy] = useState<'title' | 'updated' | 'added'>('updated');
@@ -91,7 +96,8 @@ function Gallery() {
             const query = searchQuery.toLowerCase();
             filtered = filtered.filter(m =>
                 m.title.toLowerCase().includes(query) ||
-                m.author?.toLowerCase().includes(query)
+                // m.author is not in the Interface I defined locally, but it might exist in the object. :shrug:
+                (m as any).author?.toLowerCase().includes(query)
             );
         }
 
@@ -100,9 +106,10 @@ function Gallery() {
                 case 'title':
                     return a.title.localeCompare(b.title);
                 case 'updated':
-                    return (b.updated_at || 0) - (a.updated_at || 0);
+                    // Assuming updated_at exists on Manga object at runtime even if not in my partial interface
+                    return ((b as any).updated_at || 0) - ((a as any).updated_at || 0);
                 case 'added':
-                    return (b.added_at || 0) - (a.added_at || 0);
+                    return ((b as any).added_at || 0) - ((a as any).added_at || 0);
                 default:
                     return 0;
             }
@@ -261,9 +268,10 @@ function Gallery() {
                             extensionId={manga.source_id}
                             index={index}
                             inLibrary
-                            totalChapters={manga.total_chapters}
-                            readChapters={manga.read_chapters}
+                            totalChapters={(manga as any).total_chapters}
+                            readChapters={(manga as any).read_chapters}
                             onContextMenu={handleContextMenu}
+                            uniqueId={manga.id}
                         />
                     ))}
                 </div>
@@ -291,4 +299,4 @@ function Gallery() {
     );
 }
 
-export default Gallery;
+export default Library;

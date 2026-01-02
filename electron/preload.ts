@@ -54,8 +54,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
             ipcRenderer.invoke('ext:getChapterPages', extensionId, chapterId),
     },
 
-    getProxiedImageUrl: (url: string, extensionId: string) => {
-        return `manga-image://proxy?url=${encodeURIComponent(url)}&ext=${extensionId}`;
+    getProxiedImageUrl: (url: string, extensionId: string, mangaId?: string, chapterId?: string) => {
+        let proxyUrl = `manga-image://proxy?url=${encodeURIComponent(url)}&ext=${extensionId}`;
+        if (mangaId) proxyUrl += `&manga=${encodeURIComponent(mangaId)}`;
+        if (chapterId) proxyUrl += `&chapter=${encodeURIComponent(chapterId)}`;
+        return proxyUrl;
     },
 
     window: {

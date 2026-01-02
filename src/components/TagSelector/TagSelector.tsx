@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAppStore } from '../../stores/appStore';
+import { useTagStore } from '../../features/tags/stores/tagStore';
 import { Icons } from '../Icons';
 import './TagSelector.css';
 
@@ -9,7 +9,7 @@ interface TagSelectorProps {
 }
 
 function TagSelector({ mangaId, onClose }: TagSelectorProps) {
-    const { tags, loadTags, createTag, addTagToManga, removeTagFromManga } = useAppStore();
+    const { tags, loadTags, createTag, addTagToManga, removeTagFromManga } = useTagStore();
     const [newTagName, setNewTagName] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTagIds, setActiveTagIds] = useState<Set<number>>(new Set());
@@ -19,8 +19,11 @@ function TagSelector({ mangaId, onClose }: TagSelectorProps) {
 
         const fetchMangaTags = async () => {
             try {
-                const tags = await window.electronAPI.db.getTagsForManga(mangaId);
-                setActiveTagIds(new Set(tags.map(t => t.id)));
+                console.log('Fetching tags for manga:', mangaId);
+                const result = await window.electronAPI.db.getTagsForManga(mangaId);
+                console.log('Tags fetch result:', result);
+                const tagsList = Array.isArray(result) ? result : [];
+                setActiveTagIds(new Set(tagsList.map((t: any) => t.id)));
             } catch (e) {
                 console.error("Failed to load manga tags", e);
             }

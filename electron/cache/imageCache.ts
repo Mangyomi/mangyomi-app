@@ -32,28 +32,15 @@ class ImageCache {
         this.prune(); // Prune immediately if new limit is smaller
     }
 
-    getCacheSize(): number {
-        const parentCacheDir = path.dirname(this.cacheDir);
-        if (!fs.existsSync(parentCacheDir)) return 0;
-
-        let totalSize = 0;
-        const walkDir = (dir: string) => {
-            const entries = fs.readdirSync(dir, { withFileTypes: true });
-            for (const entry of entries) {
-                const fullPath = path.join(dir, entry.name);
-                if (entry.isDirectory()) {
-                    walkDir(fullPath);
-                } else {
-                    try {
-                        totalSize += fs.statSync(fullPath).size;
-                    } catch (e) {
-                        // File might be deleted during walk (race condition), ignore
-                    }
-                }
-            }
-        };
-        walkDir(parentCacheDir);
-        return totalSize;
+    async getCacheSize(): Promise<number> {
+        try {
+            const db = getDatabase();
+            const result = db.prepare('SELECT SUM(size) as total FROM image_cache').get() as { total: number };
+            return result?.total || 0;
+        } catch (e) {
+            console.error('Failed to get cache size from DB:', e);
+            return 0;
+        }
     }
 
     getCachedImagePath(url: string): string | null {
@@ -105,11 +92,12 @@ class ImageCache {
         return null;
     }
 
-    async saveCover(url: string, headers: Record<string, string>): Promise<string> {
+    async saveCover(url: string, headers: Record<string, string>, mangaId: string = 'UNKNOWN'): Promise<string> {
         if (!this.initialized) this.init();
 
         const hash = crypto.createHash('sha256').update(url).digest('hex');
         const metaPath = path.join(this.coverCacheDir, `${hash}.meta`);
+        const db = getDatabase();
 
         try {
             const response = await net.fetch(url, { headers });
@@ -143,6 +131,22 @@ class ImageCache {
                 filePath, // Store actual path used
                 cachedAt: Math.floor(Date.now() / 1000)
             }));
+
+            // Register in DB for size calculation
+            try {
+                db.prepare(`
+                    INSERT OR REPLACE INTO image_cache (url, hash, manga_id, chapter_id, size, cached_at)
+                    VALUES (@url, @hash, @manga_id, @chapter_id, @size, strftime('%s', 'now'))
+                `).run({
+                    '@url': url,
+                    '@hash': hash,
+                    '@manga_id': mangaId,
+                    '@chapter_id': 'COVER', // Special chapter ID for covers
+                    '@size': dataToSave.length
+                });
+            } catch (dbError) {
+                console.error('Failed to register cover in DB:', dbError);
+            }
 
             return filePath;
         } catch (error) {
@@ -186,24 +190,33 @@ class ImageCache {
             // Delete in chunks
             const rows = db.prepare('SELECT url, hash, size FROM image_cache ORDER BY cached_at ASC LIMIT 50').all() as { url: string, hash: string, size: number }[];
 
-            for (const row of rows) {
-                if (currentSize <= this.maxCacheSize) break;
+            if (rows.length === 0) {
+                this.isPruning = false;
+                return;
+            }
+
+            const deletePromises = rows.map(async (row) => {
+                if (currentSize <= this.maxCacheSize) return; // Optimization: stop if we dip under (approx)
 
                 const filePath = path.join(this.cacheDir, row.hash);
-                if (fs.existsSync(filePath)) {
-                    try { fs.unlinkSync(filePath); } catch (e) { }
+                try {
+                    await fs.promises.unlink(filePath);
+                } catch (e) {
+                    // Ignore
                 }
 
                 db.prepare('DELETE FROM image_cache WHERE url = ?').run(row.url);
                 currentSize -= row.size;
-            }
+            });
 
-            // Recurse if still over limit (but yield to event loop)
+            await Promise.all(deletePromises);
+
+            // Recurse if still over limit (but yield to event loop via simple timeout)
             if (currentSize > this.maxCacheSize) {
-                setImmediate(() => {
+                setTimeout(() => {
                     this.isPruning = false;
                     this.prune();
-                });
+                }, 100);
                 return;
             }
 
@@ -302,20 +315,55 @@ class ImageCache {
 
         if (mangaId) {
             // Delete specific manga images
-            const rows = db.prepare('SELECT hash FROM image_cache WHERE manga_id = ?').all(mangaId) as { hash: string }[];
-            for (const row of rows) {
-                const filePath = path.join(this.cacheDir, row.hash);
-                if (fs.existsSync(filePath)) {
-                    fs.unlinkSync(filePath);
+            const rows = db.prepare('SELECT hash, chapter_id FROM image_cache WHERE manga_id = ?').all(mangaId) as { hash: string, chapter_id: string }[];
+            const deletionPromises = rows.map(async (row) => {
+                // Determine path based on type
+                let filePath: string;
+                if (row.chapter_id === 'COVER') {
+                    // Covers might have .jpg extension or not, check both or metadata?
+                    // saveCover saves as .jpg usually.
+                    // Simplest is to try deleting likely paths.
+                    const jpgPath = path.join(this.coverCacheDir, `${row.hash}.jpg`);
+                    const rawPath = path.join(this.coverCacheDir, row.hash);
+                    const metaPath = path.join(this.coverCacheDir, `${row.hash}.meta`);
+
+                    try { await fs.promises.unlink(jpgPath); } catch (e) { }
+                    try { await fs.promises.unlink(rawPath); } catch (e) { }
+                    try { await fs.promises.unlink(metaPath); } catch (e) { }
+                    return;
+                } else {
+                    filePath = path.join(this.cacheDir, row.hash);
                 }
-            }
+
+                try {
+                    await fs.promises.unlink(filePath);
+                } catch (e) {
+                    // Ignore if file already gone
+                }
+            });
+            await Promise.all(deletionPromises);
             db.prepare('DELETE FROM image_cache WHERE manga_id = ?').run(mangaId);
         } else {
-            // Only delete our images folder (Chromium caches are locked while app runs)
+            // Clear Images
             if (fs.existsSync(this.cacheDir)) {
-                fs.rmSync(this.cacheDir, { recursive: true, force: true });
-                fs.mkdirSync(this.cacheDir, { recursive: true });
+                try {
+                    await fs.promises.rm(this.cacheDir, { recursive: true, force: true });
+                    await fs.promises.mkdir(this.cacheDir, { recursive: true });
+                } catch (e) {
+                    console.error('Failed to clear cache dir:', e);
+                }
             }
+
+            // Clear Covers
+            if (fs.existsSync(this.coverCacheDir)) {
+                try {
+                    await fs.promises.rm(this.coverCacheDir, { recursive: true, force: true });
+                    await fs.promises.mkdir(this.coverCacheDir, { recursive: true });
+                } catch (e) {
+                    console.error('Failed to clear cover cache dir:', e);
+                }
+            }
+
             db.prepare('DELETE FROM image_cache').run();
         }
     }

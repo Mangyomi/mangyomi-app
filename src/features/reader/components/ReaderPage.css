@@ -343,8 +343,7 @@
 
 .reader-page-wrapper {
     width: 100%;
-    min-height: 50vh;
-    /* Reserve space for unloaded images */
+    /* Removed min-height to fix gaps in webtoon mode */
     display: flex;
     justify-content: center;
     /* Center the image */

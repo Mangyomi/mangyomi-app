@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { useAppStore } from '../../stores/appStore';
-import { useSettingsStore } from '../../stores/settingsStore';
-import { Icons } from '../../components/Icons';
+import { useExtensionStore, AvailableExtension } from '../stores/extensionStore';
+import { useSettingsStore } from '../../settings/stores/settingsStore';
+import { Icons } from '../../../components/Icons';
 import './Extensions.css';
 
 const isUpdateAvailable = (current: string, latest: string) => {
@@ -19,7 +19,9 @@ const isUpdateAvailable = (current: string, latest: string) => {
 const DEFAULT_REPO_URL = 'https://github.com/Mangyomi/mangyomi-ext';
 
 function Extensions() {
-    const { extensions, loadExtensions } = useAppStore();
+    // Adapted to use useExtensionStore instead of useAppStore as requested by refactor,
+    // but preserving the user's specific component logic and structure.
+    const { extensions, loadExtensions } = useExtensionStore();
     const { isExtensionEnabled, toggleExtension, developerMode } = useSettingsStore();
 
     const [repoUrl, setRepoUrl] = useState('');

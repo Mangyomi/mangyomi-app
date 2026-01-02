@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useSettingsStore, Theme, ReaderMode } from '../../stores/settingsStore';
-import { useAniListStore } from '../../stores/anilistStore';
-import { useDialog } from '../../components/ConfirmModal/DialogContext';
-import RangeSlider from '../../components/RangeSlider/RangeSlider';
+import { useSettingsStore, Theme, ReaderMode } from '../stores/settingsStore';
+import { useAniListStore } from '../../../stores/anilistStore';
+import { useDialog } from '../../../components/ConfirmModal/DialogContext';
+import RangeSlider from '../../../components/RangeSlider/RangeSlider';
 import './Settings.css';
 
 // Icons
@@ -25,7 +25,7 @@ const Icons = {
     ),
     Storage: () => (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path fillRule="evenodd" clipRule="evenodd" d="M6.99999 2C4.23857 2 1.99999 4.23858 1.99999 7C1.99999 9.76142 4.23857 12 6.99999 12H17C19.7614 12 22 9.76142 22 7C22 4.23858 19.7614 2 17 2H6.99999ZM6.99999 4C5.34313 4 3.99999 5.34315 3.99999 7C3.99999 8.65685 5.34313 10 6.99999 10H17C18.6568 10 20 8.65685 20 7C20 5.34315 18.6568 4 17 4H6.99999ZM6.99846 14C4.23704 14 1.99846 16.2386 1.99846 19C1.99846 21.7614 4.23704 24 6.99846 24H16.9985C19.7599 24 21.9985 21.7614 21.9985 19C21.9985 16.2386 19.7599 14 16.9985 14H6.99846ZM6.99846 16C5.34161 16 3.99846 17.3431 3.99846 19C3.99846 20.6569 5.34161 22 6.99846 22H16.9985C18.6553 22 19.9985 20.6569 19.9985 19C19.9985 17.3431 18.6553 16 16.9985 16H6.99846Z" fill="currentColor" />
+            <path fillRule="evenodd" clipRule="evenodd" d="M6.99999 2C4.23857 2 1.99999 4.23858 1.99999 7C1.99999 9.76142 4.23857 12 6.99999 12H17C19.7614 12 22 9.76142 22 7C22 4.23858 19.7614 2 17 2H6.99999ZM6.99999 4C5.34313 4 3.99999 5.34315 3.99999 7C3.99999 8.65685 5.34313 10 6.99999 10H17C18.6568 10 20 8.65685 20 7C20 5.34315 18.6568 4 17 4H6.99999ZM6.99846 14C4.23704 14 1.99846 16.2386 1.99846 19C1.99846 21.7614 4.23704 24 6.99846 24H16.9985C19.7599 24 21.9985 21.7614 21.9985 19C21.9985 16.2386 19.7599 14 16.9985 14H6.99846ZM6.99846 16C5.34161 16 3.99846 17.3431 3.99846 19C3.99846 20.6569 5.34161 22 6.99846 22H16.9985C18.6553 22 19.9985 20.6569 19.9985 17.3431 18.6553 16 16.9985 16H6.99846Z" fill="currentColor" />
             <path d="M6 7C6 6.44772 6.44772 6 7 6H9C9.55228 6 10 6.44772 10 7C10 7.55228 9.55228 8 9 8H7C6.44772 8 6 7.55228 6 7Z" fill="currentColor" />
             <path d="M6.00153 19C6.00153 18.4477 6.44924 18 7.00153 18H9.00153C9.55381 18 10.0015 18.4477 10.0015 19C10.0015 19.5523 9.55381 20 9.00153 20H7.00153C6.44924 20 6.00153 19.5523 6.00153 19Z" fill="currentColor" />
         </svg>
@@ -43,7 +43,7 @@ const Icons = {
     ),
     Discord: () => (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M19.27 5.33C17.94 4.71 16.5 4.26 15 4a.09.09 0 0 0-.07.03c-.18.33-.39.76-.53 1.09a16.09 16.09 0 0 0-4.8 0c-.14-.34-.35-.76-.54-1.09c-.01-.02-.04-.03-.07-.03c-1.5.26-2.93.71-4.27 1.33c-.01 0-.02.01-.03.02c-2.72 4.07-3.47 8.03-3.1 11.95c0 .02.01.04.03.05c1.8 1.32 3.53 2.12 5.24 2.65c.03.01.06 0 .07-.02c.4-.55.76-1.13 1.07-1.74c.02-.04 0-.08-.04-.09c-.57-.22-1.11-.48-1.64-.78c-.04-.02-.04-.08-.01-.11c.11-.08.22-.17.33-.25c.02-.02.05-.02.07-.01c3.44 1.57 7.15 1.57 10.55 0c.02-.01.05-.01.07.01c.11.09.22.17.33.26c.04.03.04.09-.01.11c-.52.31-1.07.56-1.64.78c-.04.01-.05.06-.04.1c.31.61.67 1.19 1.07 1.74c.03.01.06.02.09.01c1.72-.53 3.45-1.33 5.25-2.65c.02-.01.03-.03.03-.05c.44-4.53-.73-8.46-3.1-11.95c-.01-.01-.02-.02-.04-.02zM8.52 14.91c-1.03 0-1.89-.95-1.89-2.12s.84-2.12 1.89-2.12c1.06 0 1.9.96 1.89 2.12c0 1.17-.84 2.12-1.89 2.12zm6.97 0c-1.03 0-1.89-.95-1.89-2.12s.84-2.12 1.89-2.12c1.06 0 1.9.96 1.89 2.12c0 1.17-.85 2.12-1.89 2.12z" fill="currentColor" />
+            <path d="M19.27 5.33C17.94 4.71 16.5 4.26 15 4a.09.09 0 0 0-.07.03c-.18.33-.39.76-.53 1.09a16.09 16.09 0 0 0-4.8 0c-.14-.34-.35-.76-.54-1.09c-.01-.02-.04-.03-.07-.03c-1.5.26-2.93.71-4.27 1.33c-.01 0-.02.01-.03.02c-2.72 4.07-3.47 8.03-3.1 11.95c0 .02.01.04.03.05c1.8 1.32 3.53 2.12 5.2 2.65c.03.01.06 0 .07-.02c.4-.55.76-1.13 1.07-1.74c.02-.04 0-.08-.04-.09c-.57-.22-1.11-.48-1.64-.78c-.04-.02-.04-.08.01-.11c.11-.08.22-.17.33-.25c.02-.02.05-.02.07-.01c3.44 1.57 7.15 1.57 10.55 0c.02-.01.05-.01.07.01c.11.09.22.17.33.26c.04.03.04.09 0 .11c-.52.31-1.07.56-1.64.78c-.04.01-.05.06-.04.09c.32.61.68 1.19 1.07 1.74c.03.01.06.02.09.01c1.72-.53 3.48-1.33 5.25-2.65c.02-.01.03-.03.03-.05c.44-4.53-.73-8.46-3.1-11.95c-.01-.01-.02-.02-.04-.02zM8.52 14.91c-1.03 0-1.89-.95-1.89-2.12s.84-2.12 1.89-2.12c1.06 0 1.9.96 1.89 2.12c0 1.17-.84 2.12-1.89 2.12zm6.97 0c-1.03 0-1.89-.95-1.89-2.12s.84-2.12 1.89-2.12c1.06 0 1.9.96 1.89 2.12c0 1.17-.83 2.12-1.89 2.12z" fill="currentColor" />
         </svg>
     ),
 };
@@ -83,7 +83,7 @@ const SETTING_DEFINITIONS: SettingDef[] = [
     { id: 'anilist', category: 'tracking', label: 'AniList', description: 'Sync reading progress with AniList', keywords: ['anilist', 'sync', 'tracking', 'progress'] },
     { id: 'discord', category: 'discord', label: 'Discord Rich Presence', description: 'Show what you are reading on Discord', keywords: ['discord', 'rpc', 'presence', 'status', 'tracking'] },
     { id: 'discord-nsfw', category: 'discord', label: 'Hide NSFW from Discord', description: 'Do not show NSFW titles on Discord status', keywords: ['discord', 'nsfw', 'hide', 'privacy'] },
-    { id: 'discord-strict', category: 'discord', label: 'Strict NSFW Detection', description: 'Treat all content from NSFW extensions as NSFW', keywords: ['discord', 'nsfw', 'strict', 'extension'] },
+    { id: 'discord-strict', category: 'discord', label: 'Strict NSFW Detection', description: 'Treat all content from NSFW extensions (e.g. HentaiForce) as NSFW', keywords: ['discord', 'nsfw', 'strict', 'extension'] },
     { id: 'debug-log', category: 'advanced', label: 'Create Debug Log', description: 'Generate log file for troubleshooting', keywords: ['debug', 'log', 'error', 'support'] },
     { id: 'developer-mode', category: 'advanced', label: 'Developer Mode', description: 'Enable advanced features like extension sideloading', keywords: ['developer', 'dev', 'sideload', 'extension'] },
 ];
@@ -473,7 +473,7 @@ function Settings() {
                     </div>
                     <div className="setting-control">
                         <button className="action-btn" onClick={async () => {
-                            const { debugLogger } = await import('../../utils/debugLogger');
+                            const { debugLogger } = await import('../../../utils/debugLogger');
                             const consoleLogs = debugLogger.getFormattedLogs();
                             const networkActivity = debugLogger.getFormattedNetwork();
                             const result = await window.electronAPI.app.createDumpLog(consoleLogs, networkActivity);

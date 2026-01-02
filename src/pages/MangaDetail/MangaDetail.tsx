@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../stores/appStore';
+import { useLibraryStore } from '../../features/library/stores/libraryStore';
 import { useAniListStore } from '../../stores/anilistStore';
 import { useDialog } from '../../components/ConfirmModal/DialogContext';
 import { useRef } from 'react';
-import { useSettingsStore } from '../../stores/settingsStore';
+import { useSettingsStore } from '../../features/settings/stores/settingsStore';
 import './MangaDetail.css';
 
 import TagSelector from '../../components/TagSelector';
@@ -20,10 +21,12 @@ function MangaDetail() {
         currentChapters,
         loadMangaDetails,
         loadChapters,
+    } = useAppStore();
+    const {
         addToLibrary,
         removeFromLibrary,
         library,
-    } = useAppStore();
+    } = useLibraryStore();
     const dialog = useDialog();
 
     const [loading, setLoading] = useState(true);

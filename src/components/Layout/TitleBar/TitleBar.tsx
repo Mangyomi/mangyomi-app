@@ -15,7 +15,8 @@ function TitleBar() {
     // Determine if we can go back. 
     // Simplified check: if not root pages. 
     const isRoot = ['/', '/browse', '/extensions', '/history', '/settings', '/tags'].includes(location.pathname);
-    const canGoBack = !isRoot;
+    const isReader = location.pathname.startsWith('/read');
+    const canGoBack = !isRoot && !isReader;
 
     const match = useMatch('/manga/:extensionId/:mangaId');
     const { loadMangaDetails, loadChapters } = useAppStore();

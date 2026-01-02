@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useAppStore, Tag, Manga } from '../../stores/appStore';
-import { useSettingsStore } from '../../stores/settingsStore';
-import MangaCard from '../../components/MangaCard/MangaCard';
-import ConfirmModal from '../../components/ConfirmModal/ConfirmModal';
-import { Icons } from '../../components/Icons';
+import { useAppStore, Manga } from '../../../stores/appStore';
+import { useSettingsStore } from '../../settings/stores/settingsStore';
+import { useExtensionStore } from '../../extensions/stores/extensionStore';
+import { useTagStore, Tag } from '../stores/tagStore';
+import MangaCard from '../../../components/MangaCard/MangaCard';
+import ConfirmModal from '../../../components/ConfirmModal/ConfirmModal';
+import { Icons } from '../../../components/Icons';
 import './Tags.css';
 
 const TAG_COLORS = [
@@ -13,7 +15,11 @@ const TAG_COLORS = [
 ];
 
 function Tags() {
-    const { tags, loadTags, createTag, updateTag, deleteTag, getMangaByTag, removeTagFromManga, extensions } = useAppStore();
+    const { extensions } = useExtensionStore();
+    const {
+        tags, loadTags, createTag, updateTag, deleteTag, removeTagFromManga,
+        getMangaByTag, selectedTag, setSelectedTag
+    } = useTagStore();
     const { hideNsfwInTags, hideNsfwCompletely } = useSettingsStore();
 
     // State for NSFW-filtered tag counts
@@ -68,8 +74,11 @@ function Tags() {
     const [tagToDelete, setTagToDelete] = useState<Tag | null>(null);
     const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
-    // Drill-down state
-    const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
+    // Drill-down state (we are using store state for selectedTag, but local for list)
+    // Note: selectedTag is now in store, but we sync it here? 
+    // Actually the original used local selectedTag. I moved it to store.
+    // So I should use store's selectedTag.
+
     const [tagManga, setTagManga] = useState<Manga[]>([]);
     const [loadingManga, setLoadingManga] = useState(false);
 

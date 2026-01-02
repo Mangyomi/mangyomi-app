@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { NavLink } from 'react-router-dom';
-import { useAppStore } from '../../../stores/appStore';
-import { useSettingsStore } from '../../../stores/settingsStore';
+import { useSettingsStore } from '../../../features/settings/stores/settingsStore';
+import { useLibraryStore } from '../../../features/library/stores/libraryStore';
+import { useExtensionStore } from '../../../features/extensions/stores/extensionStore';
 import { Logo } from '../../Logo';
 import './Sidebar.css';
 
@@ -55,7 +56,8 @@ const MIN_WIDTH = 200; // Min expanded width
 const MAX_WIDTH = 480;
 
 function Sidebar() {
-    const { library, extensions } = useAppStore();
+    const { library } = useLibraryStore();
+    const { extensions } = useExtensionStore();
     const { hideNsfwInLibrary, hideNsfwCompletely } = useSettingsStore();
 
     // Default to expanded, read from local storage if needed in future

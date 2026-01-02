@@ -1,4 +1,10 @@
 .extensions-page {
+    padding: 24px;
+    padding-bottom: 25px;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
     max-width: 900px;
 }
 

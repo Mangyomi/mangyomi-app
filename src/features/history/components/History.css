@@ -1,0 +1,183 @@
+.history-page {
+    padding: 24px;
+    padding-bottom: 25px;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.page-header {
+    margin-bottom: 8px;
+}
+
+.page-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    margin: 0;
+    line-height: 1.2;
+}
+
+.page-subtitle {
+    margin-top: 8px;
+    color: var(--color-text-secondary);
+    font-size: 14px;
+}
+
+/* History List */
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+
+.history-group {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.history-date {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 8px;
+    margin: 0;
+}
+
+.history-entries {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+.history-entry {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 8px;
+    /* Compact padding since we have the image */
+    transition: all 0.2s ease;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.history-entry:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-color: var(--color-border-hover);
+    background: var(--color-surface-hover);
+}
+
+.history-cover {
+    width: 60px;
+    height: 85px;
+    /* Standard Aspect Ratio */
+    object-fit: cover;
+    border-radius: 8px;
+    background: var(--color-background-secondary);
+    flex-shrink: 0;
+}
+
+.history-info {
+    flex: 1;
+    min-width: 0;
+    /* Enable text truncation */
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.history-manga-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.history-chapter {
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.history-source {
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Actions */
+.history-delete-btn {
+    opacity: 0;
+    background: none;
+    border: none;
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.history-delete-btn:hover {
+    color: var(--color-error);
+    background: rgba(var(--color-error-rgb), 0.1);
+}
+
+.history-entry:hover .history-delete-btn {
+    opacity: 1;
+}
+
+.history-continue {
+    display: none;
+    /* Hidden by default, maybe show on larger screens or as visual cue */
+}
+
+/* Empty State */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 64px 24px;
+    text-align: center;
+    color: var(--color-text-secondary);
+    flex: 1;
+}
+
+.empty-state-icon {
+    margin-bottom: 16px;
+    opacity: 0.5;
+    color: var(--color-text-secondary);
+}
+
+.empty-state-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0 0 8px 0;
+}
+
+.empty-state-description {
+    font-size: 14px;
+    max-width: 300px;
+    line-height: 1.5;
+    margin: 0;
+}

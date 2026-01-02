@@ -212,6 +212,8 @@ function setupImageProxy() {
         const url = new URL(request.url);
         const imageUrl = decodeURIComponent(url.searchParams.get('url') || '');
         const extensionId = url.searchParams.get('ext') || '';
+        const mangaId = url.searchParams.get('manga');
+        const chapterId = url.searchParams.get('chapter');
 
         if (!imageUrl) {
             return new Response('Missing image URL', { status: 400 });
@@ -230,16 +232,28 @@ function setupImageProxy() {
                 return net.fetch(imageUrl);
             }
 
-            // 1. Check cover cache with TTL (for covers)
+            // 1. Check strict cache (for chapter images)
+            // If we know it's a chapter image, look there first
+            if (mangaId && chapterId) {
+                const cachedPath = imageCache.getCachedImagePath(imageUrl);
+                if (cachedPath) {
+                    return net.fetch(`file://${cachedPath}`);
+                }
+            }
+
+            // 2. Check cover cache (fallback or if it's a cover)
             const cachedCoverPath = imageCache.getCachedCoverPath(imageUrl);
             if (cachedCoverPath) {
                 return net.fetch(`file://${cachedCoverPath}`);
             }
 
-            // 2. Check chapter page cache (for chapter images)
-            const cachedPath = imageCache.getCachedImagePath(imageUrl);
-            if (cachedPath) {
-                return net.fetch(`file://${cachedPath}`);
+            // 3. If we didn't find it in the "correct" cache, check the other one just in case
+            // (Backward compatibility or if we didn't know it was a chapter image before)
+            if (!mangaId || !chapterId) {
+                const cachedPath = imageCache.getCachedImagePath(imageUrl);
+                if (cachedPath) {
+                    return net.fetch(`file://${cachedPath}`);
+                }
             }
 
             const headers: Record<string, string> = {
@@ -252,9 +266,18 @@ function setupImageProxy() {
                 Object.assign(headers, extHeaders);
             }
 
-            // 3. Save to cover cache (all proxied images are covers or browse images)
+            // 4. Save to appropriate cache associated with the request type
             try {
-                const filePath = await imageCache.saveCover(imageUrl, headers);
+                let filePath: string;
+                if (mangaId && chapterId) {
+                    // It's a chapter page - save to main cache (original quality)
+                    filePath = await imageCache.saveToCache(imageUrl, headers, mangaId, chapterId);
+                } else {
+                    // It's a cover/browse image - save to cover cache (compressed)
+                    // Pass mangaId if available to track in DB
+                    filePath = await imageCache.saveCover(imageUrl, headers, mangaId || undefined);
+                }
+
                 entry.status = 200;
                 entry.duration = Date.now() - startTime;
                 captureNetworkRequest(entry);

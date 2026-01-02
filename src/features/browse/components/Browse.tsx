@@ -1,25 +1,27 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { useAppStore } from '../../stores/appStore';
-import { useSettingsStore } from '../../stores/settingsStore';
-import MangaCard from '../../components/MangaCard';
-import { Icons } from '../../components/Icons';
+import { useEffect, useState, useRef } from 'react';
+import { useAppStore } from '../../../stores/appStore';
+import { useSettingsStore } from '../../settings/stores/settingsStore';
+import { useBrowseStore } from '../stores/browseStore';
+import { useExtensionStore } from '../../extensions/stores/extensionStore';
+import { useLibraryStore } from '../../library/stores/libraryStore';
+import MangaCard from '../../../components/MangaCard';
+import { Icons } from '../../../components/Icons';
 import './Browse.css';
 
 function Browse() {
+    const { library } = useLibraryStore();
+    const { extensions, selectedExtension, selectExtension } = useExtensionStore();
+
     const {
-        extensions,
-        selectedExtension,
-        selectExtension,
         browseManga,
         browseLoading,
         browseHasMore,
         browseMode,
+        searchQuery: storeSearchQuery,
         browseMangaList,
         searchMangaList,
         loadMoreBrowse,
-        library,
-        searchQuery: storeSearchQuery,
-    } = useAppStore();
+    } = useBrowseStore();
 
     const { isExtensionEnabled } = useSettingsStore();
 
@@ -29,8 +31,14 @@ function Browse() {
     const loadMoreRef = useRef<HTMLDivElement>(null);
 
     const enabledExtensions = extensions.filter(ext => isExtensionEnabled(ext.id));
-
     const libraryIds = new Set(library.map(m => `${m.source_id}:${m.source_manga_id}`));
+
+    // Sync local search query with store (mostly for returning from other pages)
+    useEffect(() => {
+        if (storeSearchQuery && searchQuery !== storeSearchQuery) {
+            setSearchQuery(storeSearchQuery);
+        }
+    }, [storeSearchQuery]);
 
     useEffect(() => {
         if (enabledExtensions.length > 0) {
@@ -38,24 +46,35 @@ function Browse() {
                 selectExtension(enabledExtensions[0]);
             }
         }
-    }, [enabledExtensions, selectedExtension, isExtensionEnabled]);
+    }, [enabledExtensions, selectedExtension, isExtensionEnabled, selectExtension]);
 
     useEffect(() => {
         if (selectedExtension && isExtensionEnabled(selectedExtension.id)) {
             // If we have data and match the mode, don't re-fetch (preserves state on back nav)
+            // But if we switched extension, we SHOULD fetch. 
+            // The store doesn't know about "selected extension" change unless we tell it.
+            // Since `selectedExtension` is in `appStore` and `browseStore` is dumb, we need to trigger here.
+
+            // NOTE: Ideally, we should check if the store's data belongs to the current extension.
+            // For now, we rely on the fact that `browseMangaList` clears data or we check if store is empty?
+            // Actually, `browseStore` handles `browseManga` replacement.
+
+            // Simple check: if we have 0 items, fetch. Or if mode changed. 
+            // For now, let's keep the logic similar to original but ensure we pass extensionId
+
             if (browseManga.length > 0 && ((browseMode === 'search') || (browseMode === activeTab))) {
-                setSearchQuery(storeSearchQuery);
                 return;
             }
-            browseMangaList(activeTab, 1);
+            browseMangaList(selectedExtension.id, activeTab, 1);
         }
-    }, [selectedExtension]);
+    }, [selectedExtension]); // Run when extension changes
 
+    // Re-attach observer when loading state changes
     useEffect(() => {
         observerRef.current = new IntersectionObserver(
             (entries) => {
-                if (entries[0].isIntersecting && browseHasMore && !browseLoading) {
-                    loadMoreBrowse();
+                if (entries[0].isIntersecting && browseHasMore && !browseLoading && selectedExtension) {
+                    loadMoreBrowse(selectedExtension.id);
                 }
             },
             { threshold: 0.1 }
@@ -70,7 +89,7 @@ function Browse() {
                 observerRef.current.disconnect();
             }
         };
-    }, [browseHasMore, browseLoading, loadMoreBrowse]);
+    }, [browseHasMore, browseLoading, loadMoreBrowse, selectedExtension]);
 
     const getIconUrl = (iconPath?: string) => {
         if (!iconPath) return null;
@@ -82,15 +101,17 @@ function Browse() {
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
-        if (searchQuery.trim()) {
-            searchMangaList(searchQuery, 1);
+        if (searchQuery.trim() && selectedExtension) {
+            searchMangaList(selectedExtension.id, searchQuery, 1);
         }
     };
 
     const handleTabChange = (tab: 'popular' | 'latest') => {
         setActiveTab(tab);
         setSearchQuery('');
-        browseMangaList(tab, 1);
+        if (selectedExtension) {
+            browseMangaList(selectedExtension.id, tab, 1);
+        }
     };
 
     if (enabledExtensions.length === 0) {
@@ -122,7 +143,13 @@ function Browse() {
                     <button
                         key={ext.id}
                         className={`extension-btn ${selectedExtension?.id === ext.id ? 'active' : ''}`}
-                        onClick={() => selectedExtension?.id === ext.id ? null : selectExtension(ext)}
+                        onClick={() => {
+                            if (selectedExtension?.id !== ext.id) {
+                                // Clear browse store when switching extensions to avoid showing old data
+                                useBrowseStore.getState().resetBrowse();
+                                selectExtension(ext);
+                            }
+                        }}
                     >
                         <span className="extension-icon">
                             {ext.icon ? (

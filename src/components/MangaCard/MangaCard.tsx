@@ -19,9 +19,10 @@ interface MangaCardProps {
         variant?: 'default' | 'danger';
         title?: string;
     };
+    uniqueId?: string;
 }
 
-function MangaCard({ id, title, coverUrl, extensionId, index = 0, inLibrary, totalChapters, readChapters, onContextMenu, action }: MangaCardProps) {
+function MangaCard({ id, title, coverUrl, extensionId, index = 0, inLibrary, totalChapters, readChapters, onContextMenu, action, uniqueId }: MangaCardProps) {
     const navigate = useNavigate();
     const [imageError, setImageError] = useState(false);
 
@@ -39,8 +40,10 @@ function MangaCard({ id, title, coverUrl, extensionId, index = 0, inLibrary, tot
     };
 
     // Use proxied URL for images
+    // Pass uniqueId (internal DB ID) if available, otherwise fallback to source ID (id)
+    const effectiveMangaId = uniqueId || id;
     const proxiedCoverUrl = window.electronAPI?.getProxiedImageUrl
-        ? window.electronAPI.getProxiedImageUrl(coverUrl, extensionId)
+        ? window.electronAPI.getProxiedImageUrl(coverUrl, extensionId, effectiveMangaId)
         : coverUrl;
 
     return (
