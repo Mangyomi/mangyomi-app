@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAniListStore, AniListMedia } from '../../stores/anilistStore';
-import { useAppStore } from '../../stores/appStore';
+import { useLibraryStore, Manga } from '../../features/library/stores/libraryStore';
 import { useDialog } from '../ConfirmModal/DialogContext';
 import './AniListLinkModal.css';
 
@@ -24,7 +24,7 @@ function AniListLinkModal({
     onUnlinked,
 }: AniListLinkModalProps) {
     const { searchManga, linkManga, unlinkManga, isAuthenticated } = useAniListStore();
-    const { library } = useAppStore();
+    const { library } = useLibraryStore();
     const dialog = useDialog();
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<AniListMedia[]>([]);
@@ -56,7 +56,7 @@ function AniListLinkModal({
         if (!selectedMedia) return;
 
         // Check if this AniList ID is already linked to another manga
-        const existingLink = library.find(m => m.anilist_id === selectedMedia.id && m.id !== mangaId);
+        const existingLink = library.find((m: Manga) => m.anilist_id === selectedMedia.id && m.id !== mangaId);
 
         if (existingLink) {
             const confirmed = await dialog.confirm({
@@ -157,7 +157,7 @@ function AniListLinkModal({
                                     <div className="no-results">No results found</div>
                                 ) : (
                                     searchResults.map((media) => {
-                                        const alreadyLinkedTo = library.find(m => m.anilist_id === media.id);
+                                        const alreadyLinkedTo = library.find((m: Manga) => m.anilist_id === media.id);
                                         const isLinkedToThis = alreadyLinkedTo && alreadyLinkedTo.id === mangaId;
                                         const isLinkedToOther = alreadyLinkedTo && alreadyLinkedTo.id !== mangaId;
 
@@ -211,7 +211,7 @@ function AniListLinkModal({
                             onClick={handleLink}
                             disabled={!selectedMedia}
                         >
-                            {selectedMedia && library.some(m => m.anilist_id === selectedMedia.id && m.id !== mangaId)
+                            {selectedMedia && library.some((m: Manga) => m.anilist_id === selectedMedia.id && m.id !== mangaId)
                                 ? 'Unlink & Link'
                                 : 'Link Selected'}
                         </button>
