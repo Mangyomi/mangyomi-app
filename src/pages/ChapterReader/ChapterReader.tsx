@@ -69,7 +69,7 @@ function ChapterReader() {
     const handleChapterSelect = (targetChapterId: string) => {
         setShowChapterSelect(false);
         if (targetChapterId !== chapterId) {
-            navigate(`/read/${extensionId}/${encodeURIComponent(targetChapterId)}`);
+            navigate(`/read/${extensionId}/${encodeURIComponent(targetChapterId)}`, { replace: true });
         }
     };
 
@@ -242,16 +242,16 @@ function ChapterReader() {
         if (!containerRef.current || readerMode !== 'vertical') return;
 
         const container = containerRef.current;
-        const images = container.querySelectorAll('.reader-image');
+        const pageWrappers = container.querySelectorAll('.reader-page-wrapper');
         const containerTop = container.scrollTop;
         const containerHeight = container.clientHeight;
 
-        for (let i = 0; i < images.length; i++) {
-            const img = images[i] as HTMLElement;
-            const imgTop = img.offsetTop - container.offsetTop;
-            const imgHeight = img.clientHeight;
+        for (let i = 0; i < pageWrappers.length; i++) {
+            const wrapper = pageWrappers[i] as HTMLElement;
+            const wrapperTop = wrapper.offsetTop - container.offsetTop;
+            const wrapperHeight = wrapper.clientHeight;
 
-            if (imgTop + imgHeight > containerTop && imgTop < containerTop + containerHeight) {
+            if (wrapperTop + wrapperHeight > containerTop && wrapperTop < containerTop + containerHeight) {
                 if (currentPageIndex !== i) {
                     setCurrentPageIndex(i);
                     if (i > currentPages.length * 0.5) {
@@ -318,16 +318,18 @@ function ChapterReader() {
 
     const handlePrevChapter = () => {
         if (prevChapter) {
-            navigate(`/read/${extensionId}/${encodeURIComponent(prevChapter.id)}`);
+            navigate(`/read/${extensionId}/${encodeURIComponent(prevChapter.id)}`, { replace: true });
         }
     };
 
     const handleNextChapter = () => {
         if (nextChapter) {
-            navigate(`/read/${extensionId}/${encodeURIComponent(nextChapter.id)}`);
+            navigate(`/read/${extensionId}/${encodeURIComponent(nextChapter.id)}`, { replace: true });
         }
     };
 
+    // Non-blocking loading state implemented below
+    /* 
     if (loading) {
         return (
             <div className="reader-loading">
@@ -335,9 +337,10 @@ function ChapterReader() {
                 <p>Loading chapter...</p>
             </div>
         );
-    }
+    } 
+    */
 
-    if (currentPages.length === 0) {
+    if (!loading && currentPages.length === 0) {
         return (
             <div className="empty-state">
                 <div className="empty-state-icon">📭</div>
@@ -500,80 +503,100 @@ function ChapterReader() {
                     className="reader-scroll-container"
                     onScroll={handleScroll}
                 >
-                    {currentPages.map((pageUrl, index) => {
-                        const proxiedUrl = window.electronAPI?.getProxiedImageUrl
-                            ? window.electronAPI.getProxiedImageUrl(pageUrl, extensionId!)
-                            : pageUrl;
-
-                        return (
-                            <img
-                                key={index}
-                                src={proxiedUrl}
-                                alt={`Page ${index + 1}`}
-                                className="reader-image"
-                                loading="lazy"
-                                style={{
-                                    width: `${70 * zoomLevel}vw`,
-                                    maxWidth: 'none'
-                                }}
-                            />
-                        );
-                    })}
-
-                    {/* End of chapter */}
-                    <div className="chapter-end">
-                        <p>End of Chapter</p>
-                        <div className="chapter-nav-buttons">
-                            {prevChapter && (
-                                <button className="btn btn-secondary" onClick={handlePrevChapter}>
-                                    ← Previous Chapter
-                                </button>
-                            )}
-                            {nextChapter && (
-                                <button className="btn btn-primary" onClick={handleNextChapter}>
-                                    Next Chapter →
-                                </button>
-                            )}
+                    {loading ? (
+                        <div className="reader-loading-skeleton">
+                            {/* Show a few placeholder pages */}
+                            <div className="skeleton-page" />
+                            <div className="skeleton-page" />
+                            <div className="skeleton-page" />
                         </div>
-                    </div>
+                    ) : (
+                        <>
+                            {currentPages.map((pageUrl, index) => {
+                                const proxiedUrl = window.electronAPI?.getProxiedImageUrl
+                                    ? window.electronAPI.getProxiedImageUrl(pageUrl, extensionId!)
+                                    : pageUrl;
+
+                                return (
+                                    <div key={index} className="reader-page-wrapper">
+                                        <img
+                                            src={proxiedUrl}
+                                            alt={`Page ${index + 1}`}
+                                            className="reader-image"
+                                            loading="lazy"
+                                            style={{
+                                                width: `${70 * zoomLevel}vw`,
+                                                maxWidth: 'none'
+                                            }}
+                                        />
+                                    </div>
+                                );
+                            })}
+
+                            {/* End of chapter */}
+                            <div className="chapter-end">
+                                <p>End of Chapter</p>
+                                <div className="chapter-nav-buttons">
+                                    {prevChapter && (
+                                        <button className="btn btn-secondary" onClick={handlePrevChapter}>
+                                            ← Previous Chapter
+                                        </button>
+                                    )}
+                                    {nextChapter && (
+                                        <button className="btn btn-primary" onClick={handleNextChapter}>
+                                            Next Chapter →
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
             ) : (
                 <div className="reader-horizontal-container" ref={containerRef}>
                     <button
                         className="page-nav prev"
                         onClick={() => setCurrentPageIndex(Math.max(0, currentPageIndex - 1))}
-                        disabled={currentPageIndex === 0}
+                        disabled={currentPageIndex === 0 || loading}
                     >
                         ‹
                     </button>
 
-                    <img
-                        src={
-                            window.electronAPI?.getProxiedImageUrl
-                                ? window.electronAPI.getProxiedImageUrl(currentPages[currentPageIndex], extensionId!)
-                                : currentPages[currentPageIndex]
-                        }
-                        alt={`Page ${currentPageIndex + 1}`}
-                        className="reader-page"
-                        style={{
-                            maxHeight: `${100 * zoomLevel}vh`,
-                            maxWidth: 'none'
-                        }}
-                    />
+                    {loading ? (
+                        <div className="reader-loading-inline" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div className="spinner"></div>
+                        </div>
+                    ) : (
+                        <img
+                            src={
+                                window.electronAPI?.getProxiedImageUrl
+                                    ? window.electronAPI.getProxiedImageUrl(currentPages[currentPageIndex], extensionId!)
+                                    : currentPages[currentPageIndex]
+                            }
+                            alt={`Page ${currentPageIndex + 1}`}
+                            className="reader-page"
+                            style={{
+                                maxHeight: `${100 * zoomLevel}vh`,
+                                maxWidth: 'none'
+                            }}
+                        />
+                    )}
 
                     <button
                         className="page-nav next"
                         onClick={() => setCurrentPageIndex(Math.min(currentPages.length - 1, currentPageIndex + 1))}
-                        disabled={currentPageIndex === currentPages.length - 1}
+                        disabled={currentPageIndex === currentPages.length - 1 || loading}
                     >
                         ›
                     </button>
                 </div>
             )}
             {/* Persistent Page Indicator */}
-            <div className="reader-persistent-indicator">
-                {currentPageIndex + 1} / {currentPages.length}
-            </div>
+            {!loading && (
+                <div className="reader-persistent-indicator">
+                    {currentPageIndex + 1} / {currentPages.length}
+                </div>
+            )}
         </div>
     );
 }

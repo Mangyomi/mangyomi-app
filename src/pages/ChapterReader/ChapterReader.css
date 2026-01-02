@@ -338,6 +338,22 @@
     /* Center image when smaller than viewport */
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
     /* Add shadow for depth */
+    display: block;
+}
+
+.reader-page-wrapper {
+    width: 100%;
+    min-height: 50vh;
+    /* Reserve space for unloaded images */
+    display: flex;
+    justify-content: center;
+    /* Center the image */
+    align-items: flex-start;
+    /* Prevent image stretching */
+    flex-shrink: 0;
+    /* Prevent wrapper compression */
+    position: relative;
+    /* Create stacking context */
 }
 
 @media (max-width: 768px) {
@@ -450,5 +466,48 @@
     z-index: 1003;
     /* Above sidebar */
     backdrop-filter: blur(4px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Inline Loading State */
+.reader-loading-inline {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 100px 0;
+    gap: var(--spacing-md);
+    color: var(--color-text-secondary);
+}
+
+.reader-loading-skeleton {
+    max-width: 800px;
+    width: 90%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 20px 0;
+}
+
+.skeleton-page {
+    width: 100%;
+    padding-bottom: 140%;
+    /* Approx A4/Manga ratio */
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    animation: pulse 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.3;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
+
+    100% {
+        opacity: 0.3;
+    }
 }
